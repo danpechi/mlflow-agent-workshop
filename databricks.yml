@@ -16,13 +16,13 @@ variables:
     default: "databricks-claude-sonnet-4-5"
   app_name:
     description: "Databricks App name (user-scoped)"
-    default: "${workspace.current_user.short_name}-zscaler-triage-agent"
+    default: "${workspace.current_user.short_name}-triage-agent"
   prompt_name:
     description: "Prompt registry name (user-scoped)"
     default: "${workspace.current_user.short_name}_triage_agent_prompt"
   experiment_name:
     description: "MLflow experiment subdir under /Users/<current_user>/"
-    default: "${workspace.current_user.short_name}-zscaler-triage-agent-eval"
+    default: "${workspace.current_user.short_name}-triage-agent-eval"
   alerts_table:
     description: "UC table name for sample alerts (user-scoped)"
     default: "${workspace.current_user.short_name}_sample_alerts"
@@ -33,7 +33,7 @@ variables:
 resources:
   jobs:
     workshop_pipeline:
-      name: "${workspace.current_user.short_name}-zscaler-workshop"
+      name: "${workspace.current_user.short_name}-zscaler-ws"
       tasks:
         - task_key: "run_config"
           notebook_task:

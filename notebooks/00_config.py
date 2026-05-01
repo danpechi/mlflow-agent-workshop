@@ -47,9 +47,9 @@ dbutils.widgets.text("catalog",        _default("WORKSHOP_CATALOG",       "brick
 dbutils.widgets.text("schema",         _default("WORKSHOP_SCHEMA",        "default"),                                           "2. UC Schema")
 dbutils.widgets.text("volume",         _default("WORKSHOP_VOLUME",        f"{_short_name}_workshop_data"),                       "3. UC Volume")
 dbutils.widgets.text("llm_endpoint",   _default("LLM_ENDPOINT_NAME",      "databricks-claude-sonnet-4-5"),                      "4. LLM serving endpoint")
-dbutils.widgets.text("app_name",       _default("WORKSHOP_APP_NAME",      f"{_short_name}-zscaler-triage-agent"),                "5. Databricks App name")
+dbutils.widgets.text("app_name",       _default("WORKSHOP_APP_NAME",      f"{_short_name}-triage-agent"),                "5. Databricks App name")
 dbutils.widgets.text("prompt_name",    _default("WORKSHOP_PROMPT_NAME",   f"{_short_name}_triage_agent_prompt"),                 "6. Prompt registry name (table component)")
-dbutils.widgets.text("experiment_name", _default("WORKSHOP_EXPERIMENT_NAME", f"{_short_name}-zscaler-triage-agent-eval"),        "7. MLflow experiment subdir")
+dbutils.widgets.text("experiment_name", _default("WORKSHOP_EXPERIMENT_NAME", f"{_short_name}-triage-agent-eval"),        "7. MLflow experiment subdir")
 dbutils.widgets.text("alerts_table",   _default("WORKSHOP_ALERTS_TABLE",  f"{_short_name}_sample_alerts"),                       "8. UC table: hand-crafted alerts")
 dbutils.widgets.text("eval_table",     _default("WORKSHOP_EVAL_TABLE",    f"{_short_name}_eval_dataset"),                        "9. UC table: eval dataset")
 

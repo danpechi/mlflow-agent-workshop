@@ -27,9 +27,9 @@ All collision-prone resource names are automatically prefixed with the deploying
 
 | Resource | Naming Pattern | Example (`jane_doe`) |
 |---|---|---|
-| Job | `<short_name>-zscaler-workshop` | `jane_doe-zscaler-workshop` |
-| App | `<short_name>-zscaler-triage-agent` | `jane_doe-zscaler-triage-agent` |
-| Experiment | `<short_name>-zscaler-triage-agent-eval` | `jane_doe-zscaler-triage-agent-eval` |
+| Job | `<short_name>-zscaler-ws` | `jane_doe-zscaler-ws` |
+| App | `<short_name>-triage-agent` | `jane_doe-triage-agent` |
+| Experiment | `<short_name>-triage-agent-eval` | `jane_doe-triage-agent-eval` |
 | Volume | `<short_name>_workshop_data` | `jane_doe_workshop_data` |
 | Tables | `<short_name>_sample_alerts`, `<short_name>_eval_dataset` | `jane_doe_sample_alerts` |
 | Prompt | `<short_name>_triage_agent_prompt` | `jane_doe_triage_agent_prompt` |
@@ -93,9 +93,9 @@ To override values, use any of these layers:
 | `schema` | `default` | All notebooks, bundle, volume path |
 | `volume` | `<short_name>_workshop_data` | UC volume holding fixtures, alerts, eval dataset |
 | `llm_endpoint` | `databricks-claude-sonnet-4-5` | Agent + eval-data generation + GEPA |
-| `app_name` | `<short_name>-zscaler-triage-agent` | Databricks App name |
+| `app_name` | `<short_name>-triage-agent` | Databricks App name |
 | `prompt_name` | `<short_name>_triage_agent_prompt` | Prompt registry entry |
-| `experiment_name` | `<short_name>-zscaler-triage-agent-eval` | MLflow experiment subdir |
+| `experiment_name` | `<short_name>-triage-agent-eval` | MLflow experiment subdir |
 | `alerts_table` | `<short_name>_sample_alerts` | UC table for hand-crafted alerts |
 | `eval_table` | `<short_name>_eval_dataset` | UC table for eval dataset |
 
