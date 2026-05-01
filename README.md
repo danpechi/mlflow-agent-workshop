@@ -21,6 +21,21 @@ MLflow Experiment              │                              │
 
 The agent triages security alerts by calling four tools (threat intelligence, user history, asset criticality, log search) and returning a structured verdict with confidence and reasoning.
 
+## Multi-User Scoping
+
+All collision-prone resource names are automatically prefixed with the deploying user's `short_name` (the part of their email before `@`, with dots replaced by underscores). This lets multiple people deploy to the **same workspace** without name collisions.
+
+| Resource | Naming Pattern | Example (`jane_doe`) |
+|---|---|---|
+| Job | `<short_name>-zscaler-workshop` | `jane_doe-zscaler-workshop` |
+| App | `<short_name>-zscaler-triage-agent` | `jane_doe-zscaler-triage-agent` |
+| Experiment | `<short_name>-zscaler-triage-agent-eval` | `jane_doe-zscaler-triage-agent-eval` |
+| Volume | `<short_name>_workshop_data` | `jane_doe_workshop_data` |
+| Tables | `<short_name>_sample_alerts`, `<short_name>_eval_dataset` | `jane_doe_sample_alerts` |
+| Prompt | `<short_name>_triage_agent_prompt` | `jane_doe_triage_agent_prompt` |
+
+**Shared resources** (no prefix): catalog `bricks_lab`, schema `default`.
+
 ## Project Structure
 
 ```
@@ -36,46 +51,63 @@ agent_server/
 notebooks/
   00_config.py                  # Single source of truth: catalog, schema, volume, endpoint, app, prompt, experiment
   01_setup_data.py              # Generate alerts, fixtures, eval dataset on UC volume
-  02_evaluate_and_optimize.py   # Eval V1 → GEPA optimize → Eval optimized → Redeploy
+  02a_setup_and_agent.py        # Agent foundation, scorers, V1 prompt registration, app deployment
+  02b_tracing_deep_dive.py      # Tracing deep dive
+  02c_evaluate_v1.py            # Evaluate V1 baseline
+  02d_optimize_prompt.py        # GEPA prompt optimization
+  02e_evaluate_and_compare.py   # Compare V1 vs optimized
+  02f_redeploy_app.py           # Redeploy with optimized prompt
 
-app.yaml              # Databricks App config (env vars consumed by agent_server/)
-databricks.yml        # Asset bundle: variables + jobs for both notebooks
+app.yaml              # Databricks App config (overwritten dynamically at deploy time)
+databricks.yml        # Asset bundle: single workflow with 3 dependent tasks
 requirements.txt      # Python dependencies
-LAB_GUIDE.md          # Step-by-step workshop instructions
 ```
 
-## Configuration — single source of truth
+## Workflow
 
-All catalog / schema / volume / endpoint / app / prompt names are defined in **one** place: `notebooks/00_config.py`. Both other notebooks start with `%run ./00_config` and inherit those variables. The defaults in this notebook match the bundle-variable defaults in `databricks.yml` and the env-var defaults in `app.yaml`.
+The bundle defines a single job (`workshop_pipeline`) with three sequential tasks:
 
-To retarget the workshop to your workspace, change the values in **one** of the following layers:
+```
+run_config  →  setup_data  →  setup_and_deploy_agent
+```
+
+1. **run_config** — Runs `00_config.py` to establish all widget values and derived paths.
+2. **setup_data** — Runs `01_setup_data.py` to create catalog/schema/volume, generate fixtures, sample alerts, and eval dataset.
+3. **setup_and_deploy_agent** — Runs `02a_setup_and_agent.py` to set up the agent, register the V1 prompt, and deploy the Databricks App.
+
+## Configuration — Single Source of Truth
+
+All names are defined in **one** place: `notebooks/00_config.py`. It computes `_short_name` from the current user's email and uses it to build user-scoped defaults. Both other notebooks start with `%run ./00_config` and inherit those variables. The defaults match the bundle-variable defaults in `databricks.yml`.
+
+To override values, use any of these layers:
 
 | Layer | What to edit | When it takes effect |
 |---|---|---|
 | Notebook widgets | Top of `notebooks/00_config.py` | Interactive notebook runs |
 | Bundle variables | `variables:` block in `databricks.yml`, or `--var key=value` on the CLI | `databricks bundle deploy / run` |
-| App env vars | `env:` list in `app.yaml` | Deployed Databricks App |
-| Local `.env` | `WORKSHOP_*`, `LLM_ENDPOINT_NAME`, `PROMPT_REGISTRY_NAME`, `FIXTURES_PATH` | Local `start-app` and notebooks running outside the bundle |
+| App env vars | `env:` list in `app.yaml` (rendered dynamically by 02a/02f) | Deployed Databricks App |
 
 | Variable | Default | Where it's used |
 |---|---|---|
-| `catalog` / `WORKSHOP_CATALOG` | `main` | All notebooks, bundle, fixtures volume path |
-| `schema` / `WORKSHOP_SCHEMA` | `zscaler_workshop` | All notebooks, bundle, fixtures volume path |
-| `volume` / `WORKSHOP_VOLUME` | `workshop_data` | UC volume holding fixtures, alerts, eval dataset |
-| `llm_endpoint` / `LLM_ENDPOINT_NAME` | `databricks-claude-sonnet-4-5` | Agent + eval-data generation + GEPA reflection |
-| `app_name` / `WORKSHOP_APP_NAME` | `zscaler-triage-agent` | Databricks App name |
-| `prompt_name` / `WORKSHOP_PROMPT_NAME` | `triage_agent_prompt` | Last component of `<catalog>.<schema>.<prompt_name>` |
-| `experiment_name` / `WORKSHOP_EXPERIMENT_NAME` | `zscaler-triage-agent-eval` | MLflow experiment subdir under `/Users/<current_user>/` |
+| `catalog` | `bricks_lab` | All notebooks, bundle, volume path |
+| `schema` | `default` | All notebooks, bundle, volume path |
+| `volume` | `<short_name>_workshop_data` | UC volume holding fixtures, alerts, eval dataset |
+| `llm_endpoint` | `databricks-claude-sonnet-4-5` | Agent + eval-data generation + GEPA |
+| `app_name` | `<short_name>-zscaler-triage-agent` | Databricks App name |
+| `prompt_name` | `<short_name>_triage_agent_prompt` | Prompt registry entry |
+| `experiment_name` | `<short_name>-zscaler-triage-agent-eval` | MLflow experiment subdir |
+| `alerts_table` | `<short_name>_sample_alerts` | UC table for hand-crafted alerts |
+| `eval_table` | `<short_name>_eval_dataset` | UC table for eval dataset |
 
 ## Quick Start
 
-See [LAB_GUIDE.md](LAB_GUIDE.md) for full workshop instructions.
-
-**TL;DR:**
-
-1. Open `notebooks/00_config` and set the widget values for your workspace (or leave defaults).
-2. Run `notebooks/01_setup_data` to generate evaluation data on the UC volume.
-3. Run `notebooks/02_evaluate_and_optimize` to evaluate V1, run GEPA, and measure improvement.
+1. Deploy the bundle from your Databricks workspace:
+   ```bash
+   databricks bundle deploy
+   databricks bundle run workshop_pipeline
+   ```
+2. The workflow runs all 3 tasks sequentially and deploys the app with the V1 prompt.
+3. Open the app URL printed at the end of the workflow to interact with the triage agent.
 
 ## How It Works
 
@@ -109,12 +141,13 @@ The agent uses a LangGraph `create_react_agent` with four tools backed by fixtur
 
 ## Runtime Configuration (deployed app)
 
-The deployed app reads everything from env vars in `app.yaml`:
+The deployed app reads everything from env vars in `app.yaml` (rendered dynamically by notebooks `02a` and `02f`):
 
-| Variable | Description | Default |
-|---|---|---|
-| `MLFLOW_TRACKING_URI` | MLflow tracking | `databricks` |
-| `LLM_ENDPOINT_NAME` | Databricks LLM serving endpoint | `databricks-claude-sonnet-4-5` |
-| `AGENT_PROMPT_VERSION` | Prompt alias to load from registry | `v1` |
-| `PROMPT_REGISTRY_NAME` | Full prompt registry path `<catalog>.<schema>.<prompt_name>` | _(unset → inline fallback)_ |
-| `FIXTURES_PATH` | Path to tool fixtures JSON | _(unset → bundled fixtures)_ |
+| Variable | Description |
+|---|---|
+| `MLFLOW_TRACKING_URI` | MLflow tracking (`databricks`) |
+| `MLFLOW_EXPERIMENT_NAME` | Full experiment path |
+| `LLM_ENDPOINT_NAME` | Databricks LLM serving endpoint |
+| `PROMPT_REGISTRY_NAME` | Full prompt registry path `<catalog>.<schema>.<prompt_name>` |
+| `AGENT_PROMPT_VERSION` | Prompt alias to load (`v1` or `optimized`) |
+| `FIXTURES_PATH` | Path to tool fixtures JSON on UC volume |
