@@ -38,8 +38,8 @@ MODEL = LLM_ENDPOINT
 # COMMAND ----------
 
 # Use backtick-quoted identifiers so names with hyphens (e.g. `zscaler-demo`) parse correctly.
-spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG_BT}")
-spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG_BT}.{SCHEMA_BT}")
+# spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG_BT}")
+# spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG_BT}.{SCHEMA_BT}")
 spark.sql(f"CREATE VOLUME IF NOT EXISTS {CATALOG_BT}.{SCHEMA_BT}.`{VOLUME}`")
 print("Catalog, schema, and volume confirmed.")
 
