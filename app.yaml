@@ -1,0 +1,23 @@
+command:
+  - "python"
+  - "-m"
+  - "uvicorn"
+  - "agent_server.start_server:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+env:
+  - name: MLFLOW_TRACKING_URI
+    value: "databricks"
+  - name: MLFLOW_EXPERIMENT_NAME
+    value: "/Users/PLACEHOLDER/PLACEHOLDER-zscaler-triage-agent-eval"
+  - name: LLM_ENDPOINT_NAME
+    value: "databricks-claude-sonnet-4-5"
+  - name: PROMPT_REGISTRY_NAME
+    value: "bricks_lab.default.PLACEHOLDER_triage_agent_prompt"
+  - name: AGENT_PROMPT_VERSION
+    value: "v1"
+  - name: FIXTURES_PATH
+    value: "/Volumes/bricks_lab/default/PLACEHOLDER_workshop_data/tool_fixtures.json"

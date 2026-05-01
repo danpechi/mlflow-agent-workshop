@@ -1,0 +1,87 @@
+bundle:
+  name: zscaler_triage_agent
+
+variables:
+  catalog:
+    description: "UC catalog for workshop data"
+    default: "bricks_lab"
+  schema:
+    description: "UC schema for workshop data"
+    default: "default"
+  volume:
+    description: "UC volume for fixture / dataset files (user-scoped)"
+    default: "${workspace.current_user.short_name}_workshop_data"
+  llm_endpoint:
+    description: "Databricks LLM serving endpoint"
+    default: "databricks-claude-sonnet-4-5"
+  app_name:
+    description: "Databricks App name (user-scoped)"
+    default: "${workspace.current_user.short_name}-zscaler-triage-agent"
+  prompt_name:
+    description: "Prompt registry name (user-scoped)"
+    default: "${workspace.current_user.short_name}_triage_agent_prompt"
+  experiment_name:
+    description: "MLflow experiment subdir under /Users/<current_user>/"
+    default: "${workspace.current_user.short_name}-zscaler-triage-agent-eval"
+  alerts_table:
+    description: "UC table name for sample alerts (user-scoped)"
+    default: "${workspace.current_user.short_name}_sample_alerts"
+  eval_table:
+    description: "UC table name for eval dataset (user-scoped)"
+    default: "${workspace.current_user.short_name}_eval_dataset"
+
+resources:
+  jobs:
+    workshop_pipeline:
+      name: "${workspace.current_user.short_name}-zscaler-workshop"
+      tasks:
+        - task_key: "run_config"
+          notebook_task:
+            notebook_path: ./notebooks/00_config.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+              volume: "${var.volume}"
+              llm_endpoint: "${var.llm_endpoint}"
+              app_name: "${var.app_name}"
+              prompt_name: "${var.prompt_name}"
+              experiment_name: "${var.experiment_name}"
+              alerts_table: "${var.alerts_table}"
+              eval_table: "${var.eval_table}"
+
+        - task_key: "setup_data"
+          depends_on:
+            - task_key: "run_config"
+          notebook_task:
+            notebook_path: ./notebooks/01_setup_data.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+              volume: "${var.volume}"
+              llm_endpoint: "${var.llm_endpoint}"
+              app_name: "${var.app_name}"
+              prompt_name: "${var.prompt_name}"
+              experiment_name: "${var.experiment_name}"
+              alerts_table: "${var.alerts_table}"
+              eval_table: "${var.eval_table}"
+
+        - task_key: "setup_and_deploy_agent"
+          depends_on:
+            - task_key: "setup_data"
+          notebook_task:
+            notebook_path: ./notebooks/02a_setup_and_agent.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+              volume: "${var.volume}"
+              llm_endpoint: "${var.llm_endpoint}"
+              app_name: "${var.app_name}"
+              prompt_name: "${var.prompt_name}"
+              experiment_name: "${var.experiment_name}"
+              alerts_table: "${var.alerts_table}"
+              eval_table: "${var.eval_table}"
+
+targets:
+  dev:
+    mode: development
+    default: true

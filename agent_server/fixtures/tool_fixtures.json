@@ -1,0 +1,408 @@
+{
+  "threat_intel": {
+    "8.8.8.8": {
+      "indicator": "8.8.8.8",
+      "type": "ip",
+      "verdict": "clean",
+      "source": "internal_ti",
+      "tags": [
+        "dns",
+        "google"
+      ],
+      "last_seen": "2026-04-28",
+      "confidence": 0.99
+    },
+    "1.1.1.1": {
+      "indicator": "1.1.1.1",
+      "type": "ip",
+      "verdict": "clean",
+      "source": "internal_ti",
+      "tags": [
+        "dns",
+        "cloudflare"
+      ],
+      "last_seen": "2026-04-28",
+      "confidence": 0.99
+    },
+    "52.84.150.39": {
+      "indicator": "52.84.150.39",
+      "type": "ip",
+      "verdict": "clean",
+      "source": "internal_ti",
+      "tags": [
+        "cdn",
+        "aws-cloudfront"
+      ],
+      "last_seen": "2026-04-27",
+      "confidence": 0.95
+    },
+    "45.227.255.190": {
+      "indicator": "45.227.255.190",
+      "type": "ip",
+      "verdict": "suspicious",
+      "source": "osint_feed",
+      "tags": [
+        "vpn",
+        "anonymizer"
+      ],
+      "last_seen": "2026-04-25",
+      "confidence": 0.72
+    },
+    "104.131.150.220": {
+      "indicator": "104.131.150.220",
+      "type": "ip",
+      "verdict": "suspicious",
+      "source": "osint_feed",
+      "tags": [
+        "bruteforce",
+        "scanner"
+      ],
+      "last_seen": "2026-04-26",
+      "confidence": 0.68
+    },
+    "185.220.101.47": {
+      "indicator": "185.220.101.47",
+      "type": "ip",
+      "verdict": "malicious",
+      "source": "premium_ti",
+      "tags": [
+        "tor-exit",
+        "exfiltration"
+      ],
+      "last_seen": "2026-04-29",
+      "confidence": 0.96
+    },
+    "194.165.16.74": {
+      "indicator": "194.165.16.74",
+      "type": "ip",
+      "verdict": "malicious",
+      "source": "premium_ti",
+      "tags": [
+        "c2",
+        "malware-delivery"
+      ],
+      "last_seen": "2026-04-29",
+      "confidence": 0.94
+    },
+    "91.243.59.18": {
+      "indicator": "91.243.59.18",
+      "type": "ip",
+      "verdict": "malicious",
+      "source": "premium_ti",
+      "tags": [
+        "ransomware",
+        "cobalt-strike"
+      ],
+      "last_seen": "2026-04-30",
+      "confidence": 0.97
+    },
+    "a1b2c3d4e5f6": {
+      "indicator": "a1b2c3d4e5f6",
+      "type": "hash",
+      "verdict": "malicious",
+      "source": "sandbox_analysis",
+      "tags": [
+        "trojan",
+        "persistence"
+      ],
+      "last_seen": "2026-04-29",
+      "confidence": 0.91
+    },
+    "deadbeef1234": {
+      "indicator": "deadbeef1234",
+      "type": "hash",
+      "verdict": "clean",
+      "source": "internal_ti",
+      "tags": [
+        "known-good"
+      ],
+      "last_seen": "2026-04-20",
+      "confidence": 0.88
+    },
+    "feedface5678": {
+      "indicator": "feedface5678",
+      "type": "hash",
+      "verdict": "suspicious",
+      "source": "osint_feed",
+      "tags": [
+        "pup",
+        "adware"
+      ],
+      "last_seen": "2026-04-22",
+      "confidence": 0.65
+    }
+  },
+  "user_history": {
+    "j.smith": {
+      "username": "j.smith",
+      "role": "developer",
+      "department": "engineering",
+      "status": "ACTIVE",
+      "anomaly_score": 0.12,
+      "last_login": "2026-04-30T08:15:00Z",
+      "mfa_enabled": true,
+      "notes": "Standard developer, no incidents"
+    },
+    "a.patel": {
+      "username": "a.patel",
+      "role": "sre",
+      "department": "engineering",
+      "status": "ACTIVE",
+      "anomaly_score": 0.15,
+      "last_login": "2026-04-30T02:30:00Z",
+      "mfa_enabled": true,
+      "notes": "On-call SRE, frequent off-hours access expected"
+    },
+    "m.chen": {
+      "username": "m.chen",
+      "role": "finance",
+      "department": "finance",
+      "status": "ACTIVE",
+      "anomaly_score": 0.78,
+      "last_login": "2026-04-29T23:45:00Z",
+      "mfa_enabled": true,
+      "notes": "Recent anomalous access pattern to data warehouse"
+    },
+    "admin-svc": {
+      "username": "admin-svc",
+      "role": "service-account",
+      "department": "infrastructure",
+      "status": "ACTIVE",
+      "anomaly_score": 0.05,
+      "last_login": "2026-04-30T09:00:00Z",
+      "mfa_enabled": false,
+      "notes": "Automated service account for provisioning"
+    },
+    "k.brown": {
+      "username": "k.brown",
+      "role": "executive",
+      "department": "c-suite",
+      "status": "ACTIVE",
+      "anomaly_score": 0.22,
+      "last_login": "2026-04-30T07:00:00Z",
+      "mfa_enabled": true,
+      "notes": "CFO, high-value target"
+    },
+    "r.diaz": {
+      "username": "r.diaz",
+      "role": "former-employee",
+      "department": "sales",
+      "status": "TERMINATED",
+      "anomaly_score": 0.95,
+      "last_login": "2026-04-28T14:00:00Z",
+      "mfa_enabled": false,
+      "notes": "Account should be disabled, terminated 2026-04-15"
+    },
+    "intern-2026": {
+      "username": "intern-2026",
+      "role": "intern",
+      "department": "engineering",
+      "status": "ACTIVE",
+      "anomaly_score": 0.3,
+      "last_login": "2026-04-29T17:00:00Z",
+      "mfa_enabled": true,
+      "notes": "Summer intern, limited access scope"
+    }
+  },
+  "asset_criticality": {
+    "WIN-LAPTOP-4421": {
+      "hostname": "WIN-LAPTOP-4421",
+      "criticality": "low",
+      "asset_type": "workstation",
+      "owner": "j.smith",
+      "os": "Windows 11",
+      "tags": [],
+      "notes": "Standard developer laptop"
+    },
+    "WIN-LAPTOP-7702": {
+      "hostname": "WIN-LAPTOP-7702",
+      "criticality": "low",
+      "asset_type": "workstation",
+      "owner": "intern-2026",
+      "os": "Windows 11",
+      "tags": [],
+      "notes": "Intern workstation"
+    },
+    "MAC-EXEC-001": {
+      "hostname": "MAC-EXEC-001",
+      "criticality": "high",
+      "asset_type": "workstation",
+      "owner": "k.brown",
+      "os": "macOS 15",
+      "tags": [
+        "restricted",
+        "executive"
+      ],
+      "notes": "CFO laptop, contains sensitive financial data"
+    },
+    "PROD-DB-NYC-03": {
+      "hostname": "PROD-DB-NYC-03",
+      "criticality": "critical",
+      "asset_type": "server",
+      "owner": "dba-team",
+      "os": "Ubuntu 24.04",
+      "tags": [
+        "regulated",
+        "PII",
+        "production"
+      ],
+      "notes": "Primary production database, PII data store"
+    },
+    "PROD-WEB-LB-01": {
+      "hostname": "PROD-WEB-LB-01",
+      "criticality": "high",
+      "asset_type": "server",
+      "owner": "sre-team",
+      "os": "Ubuntu 24.04",
+      "tags": [
+        "public-facing",
+        "production"
+      ],
+      "notes": "Public-facing load balancer"
+    },
+    "DEV-K8S-CLUSTER-2": {
+      "hostname": "DEV-K8S-CLUSTER-2",
+      "criticality": "low",
+      "asset_type": "server",
+      "owner": "platform-team",
+      "os": "Ubuntu 22.04",
+      "tags": [
+        "development"
+      ],
+      "notes": "Development Kubernetes cluster"
+    },
+    "STAGING-API-04": {
+      "hostname": "STAGING-API-04",
+      "criticality": "medium",
+      "asset_type": "server",
+      "owner": "backend-team",
+      "os": "Ubuntu 24.04",
+      "tags": [
+        "staging"
+      ],
+      "notes": "Staging API server"
+    },
+    "BACKUP-NAS-01": {
+      "hostname": "BACKUP-NAS-01",
+      "criticality": "critical",
+      "asset_type": "storage",
+      "owner": "infra-team",
+      "os": "TrueNAS",
+      "tags": [
+        "regulated",
+        "backup"
+      ],
+      "notes": "Primary backup NAS, contains all system backups"
+    }
+  },
+  "log_search": {
+    "PROD-DB-NYC-03": [
+      {
+        "timestamp": "2026-04-30T01:12:33Z",
+        "level": "WARN",
+        "service": "postgres",
+        "message": "Unusual query pattern detected from 10.0.5.44"
+      },
+      {
+        "timestamp": "2026-04-30T01:12:35Z",
+        "level": "ERROR",
+        "service": "postgres",
+        "message": "Authentication failure for user readonly from 10.0.5.44 (3rd attempt)"
+      },
+      {
+        "timestamp": "2026-04-30T01:13:01Z",
+        "level": "WARN",
+        "service": "auditd",
+        "message": "Large result set (450MB) exported by user m.chen via JDBC connector"
+      }
+    ],
+    "PROD-WEB-LB-01": [
+      {
+        "timestamp": "2026-04-30T03:22:10Z",
+        "level": "INFO",
+        "service": "nginx",
+        "message": "Health check OK from monitoring-agent/2.1"
+      },
+      {
+        "timestamp": "2026-04-30T03:22:45Z",
+        "level": "WARN",
+        "service": "nginx",
+        "message": "Rate limit exceeded for 45.227.255.190 on /api/v2/auth (120 req/min)"
+      },
+      {
+        "timestamp": "2026-04-30T03:23:00Z",
+        "level": "ERROR",
+        "service": "waf",
+        "message": "SQL injection attempt blocked from 104.131.150.220"
+      }
+    ],
+    "WIN-LAPTOP-4421": [
+      {
+        "timestamp": "2026-04-29T16:05:00Z",
+        "level": "INFO",
+        "service": "defender",
+        "message": "Scheduled scan completed, no threats found"
+      },
+      {
+        "timestamp": "2026-04-29T16:30:12Z",
+        "level": "INFO",
+        "service": "sysmon",
+        "message": "Process created: code.exe PID=4421 by j.smith"
+      }
+    ],
+    "MAC-EXEC-001": [
+      {
+        "timestamp": "2026-04-30T07:01:00Z",
+        "level": "INFO",
+        "service": "unified_log",
+        "message": "User k.brown logged in via Touch ID"
+      },
+      {
+        "timestamp": "2026-04-30T07:05:33Z",
+        "level": "WARN",
+        "service": "xprotect",
+        "message": "Gatekeeper blocked unsigned app: financial_model_v3.app"
+      },
+      {
+        "timestamp": "2026-04-30T07:10:00Z",
+        "level": "INFO",
+        "service": "unified_log",
+        "message": "USB device connected: SanDisk Ultra 256GB SN=ZX9812345"
+      }
+    ],
+    "DEV-K8S-CLUSTER-2": [
+      {
+        "timestamp": "2026-04-29T22:00:00Z",
+        "level": "INFO",
+        "service": "kubelet",
+        "message": "Pod dev/test-runner-7b8c9 started successfully"
+      },
+      {
+        "timestamp": "2026-04-29T22:15:00Z",
+        "level": "WARN",
+        "service": "falco",
+        "message": "Unexpected outbound connection from pod dev/test-runner-7b8c9 to 185.220.101.47:443"
+      }
+    ],
+    "BACKUP-NAS-01": [
+      {
+        "timestamp": "2026-04-30T00:00:00Z",
+        "level": "INFO",
+        "service": "rsync",
+        "message": "Nightly backup started for PROD-DB-NYC-03"
+      },
+      {
+        "timestamp": "2026-04-30T00:45:00Z",
+        "level": "INFO",
+        "service": "rsync",
+        "message": "Backup completed: 128GB transferred, checksum verified"
+      },
+      {
+        "timestamp": "2026-04-30T04:00:00Z",
+        "level": "WARN",
+        "service": "smbd",
+        "message": "Failed SMB authentication from 10.0.99.12 user=r.diaz (account disabled)"
+      }
+    ]
+  }
+}
