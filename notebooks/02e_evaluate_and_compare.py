@@ -7,14 +7,14 @@
 # MAGIC Then compare scores to V1 to confirm improvement before deploying.
 # MAGIC
 # MAGIC **Prerequisites:**
-# MAGIC - `02a_setup_and_agent` (loaded via `%run`)
+# MAGIC - `02b_config` (loaded via `%run`)
 # MAGIC - `02c_evaluate_v1` must have been run (V1 metrics are loaded from MLflow)
 # MAGIC - `02d_optimize_prompt` must have been run (optimized prompt registered in Prompt Registry)
 
 # COMMAND ----------
 
-# DBTITLE 1,Load setup and agent foundation
-# MAGIC %run ./02a_setup_and_agent
+# DBTITLE 1,Load shared agent foundation
+# MAGIC %run ./02b_config
 
 # COMMAND ----------
 

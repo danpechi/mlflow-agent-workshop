@@ -8,15 +8,17 @@
 # MAGIC `@optimized` set in `02d_optimize_prompt`.
 # MAGIC
 # MAGIC **Prerequisites:**
-# MAGIC - `02a_setup_and_agent` (loaded via `%run`) — provides `APP_NAME`, `LLM_ENDPOINT`,
-# MAGIC   `PROMPT_REGISTRY_FQN`, `TOOL_FIXTURES_PATH`, etc.
+# MAGIC - `02b_config` (loaded via `%run`) — provides `APP_NAME`, `LLM_ENDPOINT`,
+# MAGIC   `PROMPT_REGISTRY_FQN`, `TOOL_FIXTURES_PATH`, `EXPERIMENT_PATH`, and an `mlflow`
+# MAGIC   instance pinned to the workshop experiment. (Using `02b_config` instead of
+# MAGIC   `02a_setup_and_agent` skips a redundant V1 app deploy.)
 # MAGIC - `02d_optimize_prompt` must have been run (alias `optimized` exists).
 # MAGIC - `02e_evaluate_and_compare` should have confirmed improvement.
 
 # COMMAND ----------
 
-# DBTITLE 1,Run shared setup
-# MAGIC %run ./02a_setup_and_agent
+# DBTITLE 1,Load shared config
+# MAGIC %run ./02b_config
 
 # COMMAND ----------
 

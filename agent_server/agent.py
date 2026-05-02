@@ -60,6 +60,37 @@ def _build_trace_url(trace_id: str) -> str | None:
         pass
     return f"{host}/ml/traces/{trace_id}"
 
+
+def _capture_trace_id() -> str | None:
+    """Capture trace ID using the correct API for the current execution context.
+
+    get_last_active_trace_id() returns None when called INSIDE an active trace
+    (e.g., within @invoke()). Use get_current_active_span() first — it returns
+    the span from the current context, which has the trace_id we need.
+    Fall back to get_last_active_trace_id(thread_local=True) for cases where
+    the trace has already completed.
+    """
+    # Strategy 1: Get trace ID from the currently active span (works INSIDE a trace)
+    try:
+        span = mlflow.get_current_active_span()
+        if span and hasattr(span, "trace_id") and span.trace_id:
+            return span.trace_id
+    except Exception:
+        pass
+
+    # Strategy 2: Get the last completed trace (works AFTER a trace finishes)
+    try:
+        fn = getattr(mlflow, "get_last_active_trace_id", None)
+        if callable(fn):
+            trace_id = fn(thread_local=True)
+            if trace_id:
+                return trace_id
+    except Exception:
+        pass
+
+    return None
+
+
 _checkpointer = MemorySaver()
 _store = InMemoryStore()
 
@@ -99,13 +130,7 @@ async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentRespon
     # straight to the trace in MLflow without searching.
     custom_outputs: dict[str, Any] = {"prompt_alias": PROMPT_ALIAS}
     try:
-        trace_id = None
-        for fn_name in ("get_last_active_trace_id", "last_active_trace_id"):
-            fn = getattr(mlflow, fn_name, None)
-            if callable(fn):
-                trace_id = fn()
-                if trace_id:
-                    break
+        trace_id = _capture_trace_id()
         if trace_id:
             custom_outputs["trace_id"] = trace_id
             url = _build_trace_url(trace_id)
@@ -124,7 +149,6 @@ async def stream_handler(
     request: ResponsesAgentRequest,
 ) -> AsyncGenerator[ResponsesAgentStreamEvent, None]:
     thread_id = _get_or_create_thread_id(request)
-    mlflow.update_current_trace(metadata={"mlflow.trace.session": thread_id})
 
     config: dict[str, Any] = {"configurable": {"thread_id": thread_id}}
 
@@ -138,3 +162,9 @@ async def stream_handler(
         agent.astream(input_state, config, stream_mode=["updates", "messages"])
     ):
         yield event
+
+    # Tag the trace with session ID AFTER the agent has run (trace now exists)
+    try:
+        mlflow.update_current_trace(metadata={"mlflow.trace.session": thread_id})
+    except Exception:
+        pass

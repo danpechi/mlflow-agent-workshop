@@ -7,13 +7,13 @@
 # MAGIC generate an improved prompt based on the V1 evaluation results.
 # MAGIC
 # MAGIC **Prerequisites:**
-# MAGIC - `02a_setup_and_agent` (loaded via `%run`)
-# MAGIC - `02b_evaluate_v1` should have been run first so the V1 baseline exists
+# MAGIC - `02b_config` (loaded via `%run`)
+# MAGIC - `02c_evaluate_v1` should have been run first so the V1 baseline exists
 
 # COMMAND ----------
 
-# DBTITLE 1,Load setup and agent foundation
-# MAGIC %run ./02a_setup_and_agent
+# DBTITLE 1,Load shared agent foundation
+# MAGIC %run ./02b_config
 
 # COMMAND ----------
 

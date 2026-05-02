@@ -8,13 +8,13 @@
 # MAGIC inconsistent verdicts, PII leakage, and injection vulnerability.
 # MAGIC
 # MAGIC **Prerequisites:**
-# MAGIC - `02a_setup_and_agent` (loaded via `%run`)
+# MAGIC - `02b_config` (loaded via `%run`)
 # MAGIC - `02b_tracing_deep_dive` recommended first to understand trace inspection
 
 # COMMAND ----------
 
-# DBTITLE 1,Load setup and agent foundation
-# MAGIC %run ./02a_setup_and_agent
+# DBTITLE 1,Load shared agent foundation
+# MAGIC %run ./02b_config
 
 # COMMAND ----------
 
