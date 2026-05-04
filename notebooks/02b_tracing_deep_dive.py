@@ -348,13 +348,23 @@ for i, alert in enumerate(sample_alerts[:batch_size], 1):
 # COMMAND ----------
 
 # DBTITLE 1,Snapshot traces to a Delta table
+import logging as _logging
+import warnings as _warnings
+
+# Suppress noisy warnings during bulk trace download:
+#   - urllib3 connection-pool overflow (dozens of repeated lines)
+#   - MLflow trace-download retries for orphaned trace IDs
+_warnings.filterwarnings("ignore", category=FutureWarning, module="mlflow")
+_logging.getLogger("urllib3.connectionpool").setLevel(_logging.ERROR)
+_logging.getLogger("mlflow.tracing.client").setLevel(_logging.ERROR)
+
 TRACES_TABLE        = f"{_short_name}_agent_traces"
 TRACES_TABLE_FQN    = f"{CATALOG}.{SCHEMA}.{TRACES_TABLE}"
 TRACES_TABLE_BT_FQN = f"{CATALOG_BT}.{SCHEMA_BT}.{_bt(TRACES_TABLE)}"
 
 exp = mlflow.get_experiment_by_name(EXPERIMENT_PATH)
 trace_df = mlflow.search_traces(
-    experiment_ids=[exp.experiment_id],
+    locations=[exp.experiment_id],
     max_results=500,
     order_by=["timestamp DESC"],
 )
@@ -386,7 +396,11 @@ if "execution_duration" in flat.columns:
     flat["execution_duration"] = flat["execution_duration"].apply(_to_ms)
 
 (spark.createDataFrame(flat)
-   .write.mode("overwrite").saveAsTable(TRACES_TABLE_FQN))
+   .write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(TRACES_TABLE_FQN))
+
+# Restore log levels
+_logging.getLogger("urllib3.connectionpool").setLevel(_logging.WARNING)
+_logging.getLogger("mlflow.tracing.client").setLevel(_logging.WARNING)
 
 print(f"Persisted {len(flat)} traces to {TRACES_TABLE_FQN}")
 print("Now they're queryable like any other Delta table — same governance, same lineage, same SQL.")
