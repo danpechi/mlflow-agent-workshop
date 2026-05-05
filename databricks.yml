@@ -16,7 +16,7 @@ variables:
     default: "databricks-claude-sonnet-4-5"
   app_name:
     description: "Databricks App name (user-scoped)"
-    default: "${workspace.current_user.short_name}-triage-agent"
+    default: "${workspace.current_user.short_name}-ta"
   prompt_name:
     description: "Prompt registry name (user-scoped)"
     default: "${workspace.current_user.short_name}_triage_agent_prompt"
