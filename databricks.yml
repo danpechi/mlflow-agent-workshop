@@ -91,3 +91,5 @@ targets:
   dev:
     mode: development
     default: true
+    workspace:
+      profile: DEFAULT
