@@ -1,8 +1,8 @@
-"""System prompts for the security alert triage agent.
+"""Instructions for the PEMEX Knowledge Assistant.
 
-Uses MLflow Prompt Registry for versioned prompt management.
+Uses MLflow Prompt Registry for versioned instruction management.
 The AGENT_PROMPT_VERSION env var maps to a registry alias (e.g. "v1", "optimized").
-Falls back to the inline V1 prompt if the registry is unavailable.
+Falls back to the inline V1 instructions if the registry is unavailable.
 """
 
 import logging
@@ -10,7 +10,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT_V1 = """You are a helpful assistant. Look at the alert and tell me what you think."""
+SYSTEM_PROMPT_V1 = """You are a helpful assistant for PEMEX employees. Answer questions about PEMEX procedures and policies."""
 
 PROMPT_REGISTRY_NAME = os.getenv("PROMPT_REGISTRY_NAME", "")
 PROMPT_ALIAS = os.getenv("AGENT_PROMPT_VERSION", "v1")

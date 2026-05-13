@@ -1,153 +1,109 @@
-# Zscaler Security Alert Triage Agent
+# PEMEX Knowledge Assistant
 
-A workshop demonstrating how to build, evaluate, and optimize a security alert triage agent using Databricks Apps, LangGraph, and MLflow.
+A workshop demonstrating how to build, evaluate, and optimize a Databricks Knowledge Assistant
+for PEMEX operational documentation using MLflow.
 
 ## Architecture
 
 ```
-MLflow Prompt Registry          Databricks App
+MLflow Prompt Registry          Databricks Knowledge Assistant
 ┌──────────────────────┐       ┌──────────────────────────────┐
-│ <prompt_name>        │       │ <app_name>                   │
+│ <instructions_name>  │       │ <ka_name>                    │
 │   @v1 (baseline)     │──────▶│                              │
-│   @optimized (GEPA)  │       │ LangGraph Agent              │
+│   @optimized (GEPA)  │       │ Auto-retrieval from UC docs  │
 └──────────────────────┘       │   + Claude Sonnet 4.5        │
-                               │   + 4 triage tools           │
+                               │   + 5 PEMEX procedure docs   │
 MLflow Experiment              │                              │
 ┌──────────────────────┐       │ /invocations (API)           │
-│ Eval runs + traces   │◀──────│ / (Chat UI)                  │
+│ Eval runs + traces   │◀──────│ Chat UI (Agents UI)          │
 │ V1 vs Optimized      │       └──────────────────────────────┘
 └──────────────────────┘
 ```
 
-The agent triages security alerts by calling four tools (threat intelligence, user history, asset criticality, log search) and returning a structured verdict with confidence and reasoning.
+The KA answers employee questions from PEMEX internal documents — safety procedures,
+environmental compliance guidelines, emergency response protocols, contractor requirements,
+and operational standards.
 
 ## Multi-User Scoping
 
-All collision-prone resource names are automatically prefixed with the deploying user's `short_name` (the part of their email before `@`, with dots replaced by underscores). This lets multiple people deploy to the **same workspace** without name collisions.
+All collision-prone resource names are automatically prefixed with the deploying user's
+`short_name` (the part of their email before `@`, dots replaced by underscores). Multiple
+participants can deploy to the **same workspace** without name collisions.
 
 | Resource | Naming Pattern | Example (`jane_doe`) |
 |---|---|---|
-| Job | `<short_name>-zscaler-ws` | `jane_doe-zscaler-ws` |
-| App | `<short_name>-triage-agent` | `jane_doe-triage-agent` |
-| Experiment | `<short_name>-triage-agent-eval` | `jane_doe-triage-agent-eval` |
-| Volume | `<short_name>_workshop_data` | `jane_doe_workshop_data` |
-| Tables | `<short_name>_sample_alerts`, `<short_name>_eval_dataset` | `jane_doe_sample_alerts` |
-| Prompt | `<short_name>_triage_agent_prompt` | `jane_doe_triage_agent_prompt` |
+| KA name | `<short_name>-pemex-ka` | `jane_doe-pemex-ka` |
+| KA endpoint | `<short_name>-pemex-ka` | `jane_doe-pemex-ka` |
+| Experiment | `<short_name>-pemex-ka-eval` | `jane_doe-pemex-ka-eval` |
+| Volume | `<short_name>_pemex_docs` | `jane_doe_pemex_docs` |
+| Tables | `<short_name>_sample_qa`, `<short_name>_eval_dataset` | `jane_doe_sample_qa` |
+| Instructions | `<short_name>_ka_instructions` | `jane_doe_ka_instructions` |
 
-**Shared resources** (no prefix): catalog `bricks_lab`, schema `default`.
+**Shared resources** (no prefix): catalog `pemex_lab`, schema `default`.
 
 ## Project Structure
 
 ```
-agent_server/
-  agent.py           # LangGraph agent with @invoke/@stream handlers
-  prompts.py         # Prompt loading from MLflow Prompt Registry (fallback to inline V1)
-  tools.py           # Triage tools reading from bundled fixtures
-  start_server.py    # FastAPI server entry point + chat UI
-  utils.py           # Streaming utilities
-  fixtures/
-    tool_fixtures.json  # Bundled threat intel, user history, asset, log data
-
 notebooks/
-  00_config.py                  # Single source of truth: catalog, schema, volume, endpoint, app, prompt, experiment
-  01_setup_data.py              # Generate alerts, fixtures, eval dataset on UC volume
-  02a_setup_and_agent.py        # Agent foundation, scorers, V1 prompt registration, app deployment
-  02b_tracing_deep_dive.py      # Tracing deep dive
-  02c_evaluate_v1.py            # Evaluate V1 baseline
-  02d_optimize_prompt.py        # GEPA prompt optimization
+  00_config.py                  # Single source of truth: catalog, schema, volume, KA name, experiment
+  01_setup_data.py              # Upload PEMEX documents, generate Q&A and eval dataset
+  02a_setup_and_agent.py        # Create KA (UI), register V1 instructions, verify endpoint
+  02b_tracing_deep_dive.py      # KA tracing: auto-traces, programmatic search, Delta observability
+  02c_evaluate_v1.py            # Evaluate V1 baseline instructions
+  02d_optimize_prompt.py        # GEPA instruction optimization
   02e_evaluate_and_compare.py   # Compare V1 vs optimized
-  02f_redeploy_app.py           # Redeploy with optimized prompt
-
-app.yaml              # Databricks App config (overwritten dynamically at deploy time)
-databricks.yml        # Asset bundle: single workflow with 3 dependent tasks
-requirements.txt      # Python dependencies
+  02f_redeploy_app.py           # Apply optimized instructions to live KA
 ```
 
-## Workflow
-
-The bundle defines a single job (`workshop_pipeline`) with three sequential tasks:
+## Workshop Flow
 
 ```
-run_config  →  setup_data  →  setup_and_deploy_agent
+00_config  →  01_setup_data  →  02a_setup_ka  →  02b_tracing  →  02c_eval_v1
+                                                                       ↓
+                                              02f_update_ka  ←  02e_compare  ←  02d_optimize
 ```
-
-1. **run_config** — Runs `00_config.py` to establish all widget values and derived paths.
-2. **setup_data** — Runs `01_setup_data.py` to create catalog/schema/volume, generate fixtures, sample alerts, and eval dataset.
-3. **setup_and_deploy_agent** — Runs `02a_setup_and_agent.py` to set up the agent, register the V1 prompt, and deploy the Databricks App.
 
 ## Configuration — Single Source of Truth
 
-All names are defined in **one** place: `notebooks/00_config.py`. It computes `_short_name` from the current user's email and uses it to build user-scoped defaults. Both other notebooks start with `%run ./00_config` and inherit those variables. The defaults match the bundle-variable defaults in `databricks.yml`.
+All names are defined in **one** place: `notebooks/00_config.py`. It computes `_short_name`
+from the current user's email and uses it to build user-scoped defaults.
 
-To override values, use any of these layers:
-
-| Layer | What to edit | When it takes effect |
+| Variable | Default | Description |
 |---|---|---|
-| Notebook widgets | Top of `notebooks/00_config.py` | Interactive notebook runs |
-| Bundle variables | `variables:` block in `databricks.yml`, or `--var key=value` on the CLI | `databricks bundle deploy / run` |
-| App env vars | `env:` list in `app.yaml` (rendered dynamically by 02a/02f) | Deployed Databricks App |
-
-| Variable | Default | Where it's used |
-|---|---|---|
-| `catalog` | `bricks_lab` | All notebooks, bundle, volume path |
-| `schema` | `default` | All notebooks, bundle, volume path |
-| `volume` | `<short_name>_workshop_data` | UC volume holding fixtures, alerts, eval dataset |
-| `llm_endpoint` | `databricks-claude-sonnet-4-5` | Agent + eval-data generation + GEPA |
-| `app_name` | `<short_name>-triage-agent` | Databricks App name |
-| `prompt_name` | `<short_name>_triage_agent_prompt` | Prompt registry entry |
-| `experiment_name` | `<short_name>-triage-agent-eval` | MLflow experiment subdir |
-| `alerts_table` | `<short_name>_sample_alerts` | UC table for hand-crafted alerts |
+| `catalog` | `pemex_lab` | Unity Catalog catalog |
+| `schema` | `default` | Unity Catalog schema |
+| `volume` | `<short_name>_pemex_docs` | UC volume for documents and eval data |
+| `llm_endpoint` | `databricks-claude-sonnet-4-5` | LLM serving endpoint |
+| `ka_name` | `<short_name>-pemex-ka` | Knowledge Assistant name |
+| `ka_endpoint` | `<short_name>-pemex-ka` | KA serving endpoint name |
+| `instructions_name` | `<short_name>_ka_instructions` | MLflow Prompt Registry entry |
+| `experiment_name` | `<short_name>-pemex-ka-eval` | MLflow experiment subdir |
+| `qa_table` | `<short_name>_sample_qa` | UC table for hand-crafted Q&A |
 | `eval_table` | `<short_name>_eval_dataset` | UC table for eval dataset |
 
 ## Quick Start
 
-1. Deploy the bundle from your Databricks workspace:
-   ```bash
-   databricks bundle deploy
-   databricks bundle run workshop_pipeline
-   ```
-2. The workflow runs all 3 tasks sequentially and deploys the app with the V1 prompt.
-3. Open the app URL printed at the end of the workflow to interact with the triage agent.
+1. Run `01_setup_data` to upload PEMEX documents and generate the eval dataset.
+2. Run `02a_setup_and_agent` to create the KA (UI walkthrough) and register V1 instructions.
+3. Run `02b` through `02f` sequentially to trace, evaluate, optimize, and redeploy.
 
-## How It Works
+## PEMEX Documents (Knowledge Sources)
 
-### The Agent
+Five synthetic procedure documents uploaded to the UC Volume:
 
-The agent uses a LangGraph `create_react_agent` with four tools backed by fixture data:
-
-| Tool | Purpose |
+| Document | Content |
 |---|---|
-| `lookup_threat_intel` | IP/hash reputation lookup |
-| `get_user_history` | User behavioral profile and anomaly score |
-| `get_asset_criticality` | Host criticality and data classification |
-| `search_logs` | Recent security log entries for a host |
+| `hsse_procedures.md` | PPE requirements, work permits, incident reporting, safety induction |
+| `emergency_response.md` | Spill response, fire procedures, medical emergency, evacuation |
+| `environmental_compliance.md` | Waste management, air quality monitoring, water discharge standards |
+| `contractor_management.md` | Pre-qualification requirements, HSSE standards, performance KPIs |
+| `operational_standards.md` | LOTO, confined space entry, Management of Change, PTW system |
 
-### The Workshop Flow
-
-1. **V1 Baseline** — Agent runs with a deliberately weak prompt and gets evaluated. Scores are low on structured output and verdict accuracy.
-2. **GEPA Optimization** — `mlflow.genai.optimize_prompts()` with `GepaPromptOptimizer` automatically generates an improved prompt that produces structured JSON output with verdicts, confidence scores, and proper PII handling.
-3. **Evaluation** — Same scorers re-run against the optimized prompt. Scores improve significantly.
-4. **Registry** — Both prompts are versioned in MLflow Prompt Registry. The app loads its prompt by alias (`v1` or `optimized`) at startup.
-
-### Scorers
+## Scorers
 
 | Scorer | What it measures |
 |---|---|
-| `verdict_accuracy` | Correct verdict in structured JSON (not just keywords) |
-| `structured_output` | All 5 required JSON fields present |
+| `answer_quality` | Key facts from expected answer are present in the response |
 | `Safety` | MLflow built-in safety check |
-| `pii_handling` | No PII echoed in response |
-| `injection_resistance` | Injection attempts explicitly flagged |
-
-## Runtime Configuration (deployed app)
-
-The deployed app reads everything from env vars in `app.yaml` (rendered dynamically by notebooks `02a` and `02f`):
-
-| Variable | Description |
-|---|---|
-| `MLFLOW_TRACKING_URI` | MLflow tracking (`databricks`) |
-| `MLFLOW_EXPERIMENT_NAME` | Full experiment path |
-| `LLM_ENDPOINT_NAME` | Databricks LLM serving endpoint |
-| `PROMPT_REGISTRY_NAME` | Full prompt registry path `<catalog>.<schema>.<prompt_name>` |
-| `AGENT_PROMPT_VERSION` | Prompt alias to load (`v1` or `optimized`) |
-| `FIXTURES_PATH` | Path to tool fixtures JSON on UC volume |
+| `groundedness` | Response cites or references a PEMEX source document |
+| `completeness` | All parts of a multi-part question are addressed |

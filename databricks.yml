@@ -1,31 +1,34 @@
 bundle:
-  name: zscaler_triage_agent
+  name: pemex_knowledge_assistant
 
 variables:
   catalog:
     description: "UC catalog for workshop data"
-    default: "bricks_lab"
+    default: "pemex_lab"
   schema:
     description: "UC schema for workshop data"
     default: "default"
   volume:
-    description: "UC volume for fixture / dataset files (user-scoped)"
-    default: "${workspace.current_user.short_name}_workshop_data"
+    description: "UC volume for documents and eval files (user-scoped)"
+    default: "${workspace.current_user.short_name}_pemex_docs"
   llm_endpoint:
     description: "Databricks LLM serving endpoint"
     default: "databricks-claude-sonnet-4-5"
-  app_name:
-    description: "Databricks App name (user-scoped)"
-    default: "${workspace.current_user.short_name}-ta"
-  prompt_name:
-    description: "Prompt registry name (user-scoped)"
-    default: "${workspace.current_user.short_name}_triage_agent_prompt"
+  ka_name:
+    description: "Knowledge Assistant name (user-scoped)"
+    default: "${workspace.current_user.short_name}-pemex-ka"
+  ka_endpoint:
+    description: "KA serving endpoint name (user-scoped)"
+    default: "${workspace.current_user.short_name}-pemex-ka"
+  instructions_name:
+    description: "Prompt registry name for KA instructions (user-scoped)"
+    default: "${workspace.current_user.short_name}_ka_instructions"
   experiment_name:
     description: "MLflow experiment subdir under /Users/<current_user>/"
-    default: "${workspace.current_user.short_name}-triage-agent-eval"
-  alerts_table:
-    description: "UC table name for sample alerts (user-scoped)"
-    default: "${workspace.current_user.short_name}_sample_alerts"
+    default: "${workspace.current_user.short_name}-pemex-ka-eval"
+  qa_table:
+    description: "UC table name for sample Q&A (user-scoped)"
+    default: "${workspace.current_user.short_name}_sample_qa"
   eval_table:
     description: "UC table name for eval dataset (user-scoped)"
     default: "${workspace.current_user.short_name}_eval_dataset"
@@ -33,7 +36,7 @@ variables:
 resources:
   jobs:
     workshop_pipeline:
-      name: "${workspace.current_user.short_name}-zscaler-ws"
+      name: "${workspace.current_user.short_name}-pemex-ka-ws"
       tasks:
         - task_key: "run_config"
           notebook_task:
@@ -43,10 +46,11 @@ resources:
               schema: "${var.schema}"
               volume: "${var.volume}"
               llm_endpoint: "${var.llm_endpoint}"
-              app_name: "${var.app_name}"
-              prompt_name: "${var.prompt_name}"
+              ka_name: "${var.ka_name}"
+              ka_endpoint: "${var.ka_endpoint}"
+              instructions_name: "${var.instructions_name}"
               experiment_name: "${var.experiment_name}"
-              alerts_table: "${var.alerts_table}"
+              qa_table: "${var.qa_table}"
               eval_table: "${var.eval_table}"
 
         - task_key: "setup_data"
@@ -59,13 +63,14 @@ resources:
               schema: "${var.schema}"
               volume: "${var.volume}"
               llm_endpoint: "${var.llm_endpoint}"
-              app_name: "${var.app_name}"
-              prompt_name: "${var.prompt_name}"
+              ka_name: "${var.ka_name}"
+              ka_endpoint: "${var.ka_endpoint}"
+              instructions_name: "${var.instructions_name}"
               experiment_name: "${var.experiment_name}"
-              alerts_table: "${var.alerts_table}"
+              qa_table: "${var.qa_table}"
               eval_table: "${var.eval_table}"
 
-        - task_key: "setup_and_deploy_agent"
+        - task_key: "setup_ka"
           depends_on:
             - task_key: "setup_data"
           notebook_task:
@@ -75,10 +80,11 @@ resources:
               schema: "${var.schema}"
               volume: "${var.volume}"
               llm_endpoint: "${var.llm_endpoint}"
-              app_name: "${var.app_name}"
-              prompt_name: "${var.prompt_name}"
+              ka_name: "${var.ka_name}"
+              ka_endpoint: "${var.ka_endpoint}"
+              instructions_name: "${var.instructions_name}"
               experiment_name: "${var.experiment_name}"
-              alerts_table: "${var.alerts_table}"
+              qa_table: "${var.qa_table}"
               eval_table: "${var.eval_table}"
 
 targets:

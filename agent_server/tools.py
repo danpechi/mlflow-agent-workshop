@@ -1,4 +1,4 @@
-"""Triage tools that read from UC volume fixtures."""
+"""Document retrieval tools for the PEMEX Knowledge Assistant."""
 
 import json
 import os
@@ -7,7 +7,7 @@ from typing import Any
 
 from langchain_core.tools import tool
 
-# Bundled fixtures (works in Apps); FIXTURES_PATH env var overrides for cluster/local dev
+# Bundled fixtures path (legacy; DOCS_PATH env var points to the PEMEX documents volume)
 _BUNDLED_FIXTURES_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "tool_fixtures.json")
 
 
