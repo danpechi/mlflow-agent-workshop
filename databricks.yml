@@ -32,11 +32,13 @@ variables:
   eval_table:
     description: "UC table name for eval dataset (user-scoped)"
     default: "${workspace.current_user.short_name}_eval_dataset"
+  app_name:
+    description: "Your personal app name — lowercase letters, numbers, and dashes only (e.g. dan-pechi). Required."
 
 resources:
   apps:
     pemex_ka_app:
-      name: "${workspace.current_user.short_name}-pemex-ka-app"
+      name: "${var.app_name}"
       description: "PEMEX Knowledge Assistant — interactive Q&A demo with MLflow tracing"
       source_code_path: .
 
