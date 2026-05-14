@@ -41,6 +41,14 @@ resources:
       name: "${var.app_name}"
       description: "PEMEX Knowledge Assistant — interactive Q&A demo with MLflow tracing"
       source_code_path: .
+      config:
+        env:
+          - name: KA_ENDPOINT_NAME
+            value: "${var.ka_endpoint}"
+          - name: PROMPT_REGISTRY_NAME
+            value: "${var.catalog}.${var.schema}.${var.instructions_name}"
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: "/Users/${workspace.current_user.userName}/${var.experiment_name}"
 
   jobs:
     workshop_pipeline:
