@@ -1,36 +1,25 @@
+"""PEMEX Knowledge Assistant proxy — forwards questions to the KA serving endpoint."""
+
 import logging
 import os
-from typing import Any, AsyncGenerator, Sequence, TypedDict
+from typing import Any, AsyncGenerator
 
 import mlflow
 from databricks_langchain import ChatDatabricks
-from langchain_core.messages import AnyMessage
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph.message import add_messages
-from langgraph.store.memory import InMemoryStore
+from langchain_core.messages import HumanMessage, SystemMessage
 from mlflow.genai.agent_server import invoke, stream
 from mlflow.types.responses import (
     ResponsesAgentRequest,
     ResponsesAgentResponse,
     ResponsesAgentStreamEvent,
-    to_chat_completions_input,
 )
-from typing_extensions import Annotated
 
 from agent_server.prompts import SYSTEM_PROMPT
-from agent_server.tools import triage_tools
-from agent_server.utils import (
-    _get_or_create_thread_id,
-    process_agent_astream_events,
-)
 
 logger = logging.getLogger(__name__)
 mlflow.langchain.autolog()
 logging.getLogger("mlflow.utils.autologging_utils").setLevel(logging.ERROR)
 
-# Pin traces to a specific MLflow experiment when MLFLOW_EXPERIMENT_NAME is set.
-# Without this, the deployed app logs to the App SP's default experiment, which
-# is separate from the workshop eval experiment.
 _EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME")
 if _EXPERIMENT_NAME:
     try:
@@ -39,15 +28,12 @@ if _EXPERIMENT_NAME:
     except Exception as e:
         logger.warning("Could not set MLflow experiment %s: %s", _EXPERIMENT_NAME, e)
 
-# LLM endpoint is configurable via the LLM_ENDPOINT_NAME env var (set in
-# app.yaml). The default mirrors the widget default in notebooks/00_config.py.
-LLM_ENDPOINT_NAME = os.getenv("LLM_ENDPOINT_NAME", "databricks-claude-sonnet-4-5")
+KA_ENDPOINT_NAME = os.getenv("KA_ENDPOINT_NAME", "")
 PROMPT_ALIAS = os.getenv("AGENT_PROMPT_VERSION", "v1")
 DATABRICKS_HOST = (os.getenv("DATABRICKS_HOST") or "").rstrip("/")
 
 
 def _build_trace_url(trace_id: str) -> str | None:
-    """Build a deep link to the trace in the Databricks MLflow UI."""
     if not trace_id or not DATABRICKS_HOST:
         return None
     host = DATABRICKS_HOST if DATABRICKS_HOST.startswith("http") else f"https://{DATABRICKS_HOST}"
@@ -62,23 +48,12 @@ def _build_trace_url(trace_id: str) -> str | None:
 
 
 def _capture_trace_id() -> str | None:
-    """Capture trace ID using the correct API for the current execution context.
-
-    get_last_active_trace_id() returns None when called INSIDE an active trace
-    (e.g., within @invoke()). Use get_current_active_span() first — it returns
-    the span from the current context, which has the trace_id we need.
-    Fall back to get_last_active_trace_id(thread_local=True) for cases where
-    the trace has already completed.
-    """
-    # Strategy 1: Get trace ID from the currently active span (works INSIDE a trace)
     try:
         span = mlflow.get_current_active_span()
         if span and hasattr(span, "trace_id") and span.trace_id:
             return span.trace_id
     except Exception:
         pass
-
-    # Strategy 2: Get the last completed trace (works AFTER a trace finishes)
     try:
         fn = getattr(mlflow, "get_last_active_trace_id", None)
         if callable(fn):
@@ -87,47 +62,48 @@ def _capture_trace_id() -> str | None:
                 return trace_id
     except Exception:
         pass
-
     return None
 
 
-_checkpointer = MemorySaver()
-_store = InMemoryStore()
+def _extract_question(request: ResponsesAgentRequest) -> str:
+    """Pull the last user message text from the request."""
+    for item in reversed(request.input):
+        d = item.model_dump()
+        if d.get("role") == "user":
+            content = d.get("content", "")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "input_text":
+                        return part.get("text", "")
+    return ""
 
 
-class StatefulAgentState(TypedDict, total=False):
-    messages: Annotated[Sequence[AnyMessage], add_messages]
-    remaining_steps: int
-    custom_inputs: dict[str, Any]
-    custom_outputs: dict[str, Any]
-
-
-async def init_agent():
-    tools = triage_tools()
-    model = ChatDatabricks(endpoint=LLM_ENDPOINT_NAME)
-
-    from langgraph.prebuilt import create_react_agent
-
-    return create_react_agent(
-        model=model,
-        tools=tools,
-        prompt=SYSTEM_PROMPT,
-        checkpointer=_checkpointer,
-        store=_store,
-        state_schema=StatefulAgentState,
-    )
+async def _call_ka(question: str) -> str:
+    """Call the KA serving endpoint and return the answer text."""
+    if not KA_ENDPOINT_NAME:
+        return "KA_ENDPOINT_NAME is not configured. Please set it in app.yaml."
+    model = ChatDatabricks(endpoint=KA_ENDPOINT_NAME)
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=question),
+    ]
+    response = await model.ainvoke(messages)
+    return response.content
 
 
 @invoke()
 async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentResponse:
-    outputs = [
-        event.item
-        async for event in stream_handler(request)
-        if event.type == "response.output_item.done"
-    ]
+    question = _extract_question(request)
+    answer = await _call_ka(question)
 
-    # Surface the trace ID + a deep-link to the workshop UI so the user can jump
-    # straight to the trace in MLflow without searching.
+    output_item = {
+        "type": "message",
+        "role": "assistant",
+        "content": [{"type": "output_text", "text": answer}],
+    }
+
     custom_outputs: dict[str, Any] = {"prompt_alias": PROMPT_ALIAS}
     try:
         trace_id = _capture_trace_id()
@@ -141,30 +117,21 @@ async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentRespon
     except Exception as e:
         logger.warning("trace metadata capture failed: %s", e)
 
-    return ResponsesAgentResponse(output=outputs, custom_outputs=custom_outputs)
+    return ResponsesAgentResponse.model_validate({"output": [output_item], "custom_outputs": custom_outputs})
 
 
 @stream()
 async def stream_handler(
     request: ResponsesAgentRequest,
 ) -> AsyncGenerator[ResponsesAgentStreamEvent, None]:
-    thread_id = _get_or_create_thread_id(request)
+    question = _extract_question(request)
+    answer = await _call_ka(question)
 
-    config: dict[str, Any] = {"configurable": {"thread_id": thread_id}}
-
-    input_state: dict[str, Any] = {
-        "messages": to_chat_completions_input([i.model_dump() for i in request.input]),
-        "custom_inputs": dict(request.custom_inputs or {}),
-    }
-
-    agent = await init_agent()
-    async for event in process_agent_astream_events(
-        agent.astream(input_state, config, stream_mode=["updates", "messages"])
-    ):
-        yield event
-
-    # Tag the trace with session ID AFTER the agent has run (trace now exists)
-    try:
-        mlflow.update_current_trace(metadata={"mlflow.trace.session": thread_id})
-    except Exception:
-        pass
+    yield ResponsesAgentStreamEvent.model_validate({
+        "type": "response.output_item.done",
+        "item": {
+            "type": "message",
+            "role": "assistant",
+            "content": [{"type": "output_text", "text": answer}],
+        },
+    })

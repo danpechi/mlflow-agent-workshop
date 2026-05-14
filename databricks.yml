@@ -34,6 +34,12 @@ variables:
     default: "${workspace.current_user.short_name}_eval_dataset"
 
 resources:
+  apps:
+    pemex_ka_app:
+      name: "${workspace.current_user.short_name}-pemex-ka-app"
+      description: "PEMEX Knowledge Assistant — interactive Q&A demo with MLflow tracing"
+      source_code_path: .
+
   jobs:
     workshop_pipeline:
       name: "${workspace.current_user.short_name}-pemex-ka-ws"

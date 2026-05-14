@@ -21,3 +21,5 @@ env:
     value: "v1"
   - name: DOCS_PATH
     value: "/Volumes/pemex_lab/default/PLACEHOLDER_pemex_docs/docs"
+  - name: KA_ENDPOINT_NAME
+    value: "PLACEHOLDER-pemex-ka"
