@@ -3,15 +3,15 @@
 # MAGIC %md
 # MAGIC # Setup: PEMEX Knowledge Assistant
 # MAGIC
-# MAGIC This notebook creates the Databricks Knowledge Assistant for PEMEX, registers
-# MAGIC V1 instructions in the MLflow Prompt Registry, and verifies the endpoint is live.
+# MAGIC This notebook creates the Databricks Knowledge Assistant for PEMEX via the API,
+# MAGIC registers V1 instructions in the MLflow Prompt Registry, and verifies the endpoint.
 # MAGIC
 # MAGIC **What this notebook does:**
 # MAGIC 1. Install dependencies and load config
-# MAGIC 2. Walk through creating the KA in the Databricks UI
-# MAGIC 3. Register V1 (baseline) KA instructions in MLflow Prompt Registry
-# MAGIC 4. Grant the KA endpoint access to the MLflow experiment
-# MAGIC 5. Verify the KA endpoint responds correctly
+# MAGIC 2. Create the KA via the Knowledge Assistants REST API
+# MAGIC 3. Wait for the KA to finish provisioning
+# MAGIC 4. Register V1 (baseline) KA instructions in MLflow Prompt Registry
+# MAGIC 5. Grant the KA endpoint access to the MLflow experiment
 
 # COMMAND ----------
 
@@ -26,7 +26,7 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 # DBTITLE 1,Imports
-import json
+import time
 import mlflow
 from databricks.sdk import WorkspaceClient
 
@@ -45,50 +45,107 @@ print(f"MLflow experiment: {EXPERIMENT_PATH}")
 
 # DBTITLE 1,Section 1 — Create Knowledge Assistant
 # MAGIC %md
-# MAGIC ## Section 1: Create the Knowledge Assistant
+# MAGIC ## Section 1: Create the Knowledge Assistant via API
 # MAGIC
-# MAGIC Knowledge Assistants are created through the Databricks UI or the Agent Bricks API.
-# MAGIC Follow the steps below, then paste your KA endpoint name into the `ka_endpoint`
-# MAGIC widget in `00_config` before proceeding.
-# MAGIC
-# MAGIC ---
-# MAGIC
-# MAGIC ### Step-by-Step: Create the KA in the UI
-# MAGIC
-# MAGIC 1. In the left sidebar, navigate to **Machine Learning** → **Agents**.
-# MAGIC 2. Click **+ Create agent** → select **Knowledge Assistant**.
-# MAGIC 3. Fill in the form:
-# MAGIC    - **Name**: Use the value from your `ka_name` widget (printed in the cell below)
-# MAGIC    - **Description**: "PEMEX operational Q&A assistant for safety, environmental, and operational procedures"
-# MAGIC    - **Instructions**: Leave blank for now — we will register instructions via the Prompt Registry and apply the optimized version after evaluation.
-# MAGIC 4. **Add knowledge sources** — click **+ Add source** → **Files in UC Volume**:
-# MAGIC    - Browse to the volume path printed below and add all 5 `.md` files from the `docs/` subdirectory.
-# MAGIC 5. Click **Create Agent**.
-# MAGIC
-# MAGIC > Creation takes up to a few hours while Databricks indexes your documents.
-# MAGIC > You will receive a notification when the KA is ready.
-# MAGIC
-# MAGIC 6. Once created, click **Endpoint** to get the serving endpoint name.
-# MAGIC    Paste it into the `ka_endpoint` widget in `00_config` (default: same as `ka_name`).
+# MAGIC We use the Databricks Knowledge Assistants REST API to create the KA programmatically.
+# MAGIC The KA will index all documents in the UC Volume and expose a chat endpoint.
 
 # COMMAND ----------
 
-# DBTITLE 1,Print KA setup values
-print("=" * 60)
-print("  KA SETUP VALUES")
-print("=" * 60)
-print(f"  KA name          : {KA_NAME}")
-print(f"  KA endpoint      : {KA_ENDPOINT}")
-print(f"  Documents path   : {DOCS_PATH}")
+# DBTITLE 1,Create KA via API
+w = WorkspaceClient()
+
+KA_PAYLOAD = {
+    "display_name": KA_NAME,
+    "description": "PEMEX operational Q&A assistant for safety, environmental, and operational procedures",
+    "instructions": (
+        "You are a helpful assistant for PEMEX employees. "
+        "Answer questions about PEMEX procedures and policies."
+    ),
+    "knowledge_sources": [
+        {
+            "type": "VOLUME",
+            "volume_path": DOCS_PATH,
+        }
+    ],
+}
+
+print(f"Creating Knowledge Assistant: {KA_NAME}")
+print(f"  Documents path: {DOCS_PATH}")
 print()
-print("  Document files to add as knowledge sources:")
-import os
-for fname in sorted(os.listdir(DOCS_PATH)):
-    if fname.endswith(".md"):
-        fpath = os.path.join(DOCS_PATH, fname)
-        size = os.path.getsize(fpath)
-        print(f"    - {DOCS_PATH}/{fname}  ({size:,} bytes)")
-print("=" * 60)
+
+try:
+    response = w.api_client.do(
+        "POST",
+        "/api/2.0/knowledge-assistants",
+        body=KA_PAYLOAD,
+    )
+    KA_TILE_ID = response.get("id") or response.get("tile_id")
+    print(f"KA created successfully!")
+    print(f"  Tile ID       : {KA_TILE_ID}")
+    print(f"  Status        : {response.get('status', response.get('endpoint_status', 'PROVISIONING'))}")
+    print()
+    print("The KA is now indexing documents. This may take a few minutes.")
+except Exception as e:
+    err = str(e)
+    if "already exists" in err.lower() or "conflict" in err.lower():
+        print(f"KA '{KA_NAME}' already exists — looking it up...")
+        # Find existing KA by name
+        all_kas = w.api_client.do("GET", "/api/2.0/knowledge-assistants")
+        kas = all_kas.get("knowledge_assistants", all_kas.get("items", []))
+        match = next((k for k in kas if k.get("display_name") == KA_NAME or k.get("name") == KA_NAME), None)
+        if match:
+            KA_TILE_ID = match.get("id") or match.get("tile_id")
+            print(f"  Found existing KA. Tile ID: {KA_TILE_ID}")
+        else:
+            raise RuntimeError(f"KA '{KA_NAME}' exists but could not be found in list. Check the Agents UI.")
+    else:
+        raise
+
+# COMMAND ----------
+
+# DBTITLE 1,Wait for KA to be online
+# MAGIC %md
+# MAGIC ## Waiting for KA provisioning
+# MAGIC
+# MAGIC The KA needs to index all documents before it can answer questions.
+# MAGIC This typically takes 2–10 minutes depending on document volume.
+
+# COMMAND ----------
+
+# DBTITLE 1,Poll KA status until ONLINE
+MAX_WAIT_SECONDS = 1200  # 20 minutes max
+POLL_INTERVAL = 30
+
+print(f"Polling KA status (tile_id={KA_TILE_ID})...")
+print(f"Max wait: {MAX_WAIT_SECONDS // 60} minutes, polling every {POLL_INTERVAL}s")
+print()
+
+start = time.time()
+status = "PROVISIONING"
+
+while time.time() - start < MAX_WAIT_SECONDS:
+    try:
+        ka = w.api_client.do("GET", f"/api/2.0/knowledge-assistants/{KA_TILE_ID}")
+        status = ka.get("status") or ka.get("endpoint_status", "UNKNOWN")
+        elapsed = int(time.time() - start)
+        print(f"  [{elapsed:>4}s] Status: {status}")
+
+        if status == "ONLINE":
+            print()
+            print(f"KA is ONLINE and ready!")
+            break
+        elif status in ("ERROR", "FAILED"):
+            raise RuntimeError(f"KA provisioning failed with status: {status}. Check the Agents UI.")
+    except Exception as e:
+        print(f"  Poll error (will retry): {e}")
+
+    time.sleep(POLL_INTERVAL)
+else:
+    print()
+    print(f"WARNING: KA did not reach ONLINE status within {MAX_WAIT_SECONDS // 60} minutes.")
+    print("You can continue — the KA may still be indexing.")
+    print("Re-run the 'Test KA endpoint' cell once the Agents UI shows ONLINE.")
 
 # COMMAND ----------
 
@@ -104,21 +161,18 @@ print("=" * 60)
 # COMMAND ----------
 
 # DBTITLE 1,Register V1 instructions
-# V1: deliberately minimal — no citation guidance, no scope constraint, no structured format
 V1_INSTRUCTIONS = (
     "You are a helpful assistant for PEMEX employees. "
     "Answer questions about PEMEX procedures and policies."
 )
 
-INSTRUCTIONS_REGISTRY_NAME = INSTRUCTIONS_REGISTRY_FQN
-
 v1_version = mlflow.genai.register_prompt(
-    name=INSTRUCTIONS_REGISTRY_NAME,
+    name=INSTRUCTIONS_REGISTRY_FQN,
     template=V1_INSTRUCTIONS,
     commit_message="V1: minimal baseline instructions — no citation, scope, or format guidance",
 )
 mlflow.genai.set_prompt_alias(
-    name=INSTRUCTIONS_REGISTRY_NAME,
+    name=INSTRUCTIONS_REGISTRY_FQN,
     alias="v1",
     version=v1_version.version,
 )
@@ -138,15 +192,9 @@ print("  - No completeness requirement: may give partial answers to multi-part q
 
 # COMMAND ----------
 
-# DBTITLE 1,Section 3 — Verify KA Endpoint
+# DBTITLE 1,Section 3 — Test KA Endpoint
 # MAGIC %md
-# MAGIC ## Section 3: Verify the KA Endpoint
-# MAGIC
-# MAGIC Once the KA finishes indexing (check the Agents UI for status), run this cell
-# MAGIC to verify it responds to a test question.
-# MAGIC
-# MAGIC **Prerequisite:** The `ka_endpoint` widget in `00_config` must be set to the
-# MAGIC KA's serving endpoint name.
+# MAGIC ## Section 3: Test the KA Endpoint
 
 # COMMAND ----------
 
@@ -154,15 +202,11 @@ print("  - No completeness requirement: may give partial answers to multi-part q
 from mlflow.deployments import get_deploy_client
 
 def test_ka_endpoint(endpoint_name: str, question: str) -> str:
-    """Query the KA endpoint and return the response text."""
     client = get_deploy_client("databricks")
     response = client.predict(
         endpoint=endpoint_name,
-        inputs={
-            "messages": [{"role": "user", "content": question}]
-        },
+        inputs={"messages": [{"role": "user", "content": question}]},
     )
-    # Handle both OpenAI-style and custom response formats
     if "choices" in response:
         return response["choices"][0]["message"]["content"]
     elif "content" in response:
@@ -174,8 +218,6 @@ TEST_QUESTION = "What PPE is required for workers entering a refinery process un
 
 try:
     print(f"Testing KA endpoint: {KA_ENDPOINT}")
-    print(f"Question: {TEST_QUESTION}")
-    print()
     answer = test_ka_endpoint(KA_ENDPOINT, TEST_QUESTION)
     print("KA Response:")
     print("=" * 60)
@@ -185,37 +227,23 @@ try:
     print("KA endpoint is responding. Proceed to 02b_tracing_deep_dive.")
 except Exception as e:
     print(f"Could not reach KA endpoint '{KA_ENDPOINT}': {e}")
-    print()
-    print("Possible reasons:")
-    print("  1. The KA is still indexing documents (may take up to a few hours).")
-    print("  2. The 'ka_endpoint' widget value doesn't match the actual endpoint name.")
-    print("     Check the Agents UI → your KA → Endpoint tab for the correct name.")
-    print()
-    print("You can continue with 02b_tracing_deep_dive using the local LLM fallback.")
+    print("The KA may still be indexing. Check the Agents UI for status.")
 
 # COMMAND ----------
 
-# DBTITLE 1,Grant experiment access to KA endpoint
+# DBTITLE 1,Section 4 — Grant Experiment Access
 # MAGIC %md
-# MAGIC ## Section 4: Grant Experiment Access (Optional)
-# MAGIC
-# MAGIC If you want the KA's traces to land in your workshop MLflow experiment
-# MAGIC (instead of an auto-created default), grant the KA's service principal
-# MAGIC `CAN_EDIT` on the experiment.
+# MAGIC ## Section 4: Grant Experiment Access to KA Service Principal
 
 # COMMAND ----------
 
 # DBTITLE 1,Grant experiment permissions
-w = WorkspaceClient()
-
 try:
     from databricks.sdk.service.ml import (
         ExperimentAccessControlRequest,
         ExperimentPermissionLevel,
     )
-    from databricks.sdk.service.serving import EndpointStateReady
 
-    # Look up the serving endpoint to find its service principal
     endpoint = w.serving_endpoints.get(KA_ENDPOINT)
     sp_id = getattr(endpoint, "creator", None)
 
@@ -237,13 +265,9 @@ try:
         print(f"Granted CAN_EDIT on experiment '{EXPERIMENT_PATH}' to '{sp_id}'.")
     else:
         print("Could not determine KA service principal — skipping ACL grant.")
-        print("Traces will still be logged to the KA's default experiment.")
-
 except Exception as e:
     print(f"Permission grant skipped (non-fatal): {e}")
     print("KA traces will land in the KA's auto-created experiment.")
-    print("You can still search them from any notebook using:")
-    print("  mlflow.search_traces(experiment_ids=[...], ...)")
 
 # COMMAND ----------
 
@@ -254,15 +278,9 @@ except Exception as e:
 # MAGIC | Step | Status |
 # MAGIC |------|--------|
 # MAGIC | Documents uploaded to UC Volume | Done in `01_setup_data` |
-# MAGIC | Knowledge Assistant created (UI) | Manual — check Agents UI for status |
+# MAGIC | Knowledge Assistant created via API | Done — check Agents UI for indexing status |
 # MAGIC | V1 instructions registered in Prompt Registry | Done |
-# MAGIC | KA endpoint verified | Done (or pending KA indexing) |
+# MAGIC | KA endpoint tested | Done |
 # MAGIC | Experiment permissions granted | Done |
 # MAGIC
-# MAGIC **Next:** Run `02b_tracing_deep_dive` to explore KA traces and learn how to
-# MAGIC search and diagnose responses at scale.
-# MAGIC
-# MAGIC **Note on V1 instructions:**
-# MAGIC The V1 instructions are minimal by design. When you evaluate in `02c`, you'll see
-# MAGIC the KA give answers without citations, go off-topic, or give incomplete answers.
-# MAGIC That's expected — it's the baseline we'll improve with GEPA in `02d`.
+# MAGIC **Next:** Run `02b_tracing_deep_dive` to explore KA traces.
