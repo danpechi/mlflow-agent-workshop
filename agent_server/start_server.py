@@ -124,7 +124,194 @@ async def api_config():
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
+    return _HOME_HTML
+
+
+@app.get("/chat", response_class=HTMLResponse)
+async def chat():
     return _CHAT_UI_HTML
+
+
+_HOME_HTML = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PEMEX KA Workshop</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    --bg:#0b0d12; --panel:#11141b; --panel-2:#161a23; --line:#222837;
+    --text:#e6e9ef; --muted:#8b94a7; --accent:#7c5cff; --accent-2:#22d3ee;
+    --green:#34d399; --yellow:#fbbf24; --red:#f87171; --blue:#60a5fa;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; font-size:14px; }
+
+  /* ── Hero ── */
+  .hero { text-align:center; padding:64px 24px 48px; }
+  .hero .logo { display:inline-flex; align-items:center; gap:12px; margin-bottom:24px; }
+  .hero .dot { width:14px; height:14px; border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    box-shadow:0 0 20px var(--accent); }
+  .hero h1 { font-size:32px; font-weight:800; letter-spacing:-.5px;
+    background:linear-gradient(135deg,var(--text),var(--muted));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero .sub { margin-top:10px; color:var(--muted); font-size:15px; max-width:560px; margin-inline:auto; line-height:1.6; }
+  .hero .tag { display:inline-block; margin-top:14px; padding:4px 12px; border-radius:999px;
+    background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.3);
+    color:var(--accent); font-size:12px; font-weight:600; letter-spacing:.4px; text-transform:uppercase; }
+
+  /* ── Steps ── */
+  .steps-section { max-width:900px; margin:0 auto; padding:0 24px 64px; }
+  .steps-section h2 { font-size:13px; font-weight:600; text-transform:uppercase;
+    letter-spacing:1.2px; color:var(--muted); margin-bottom:20px; }
+  .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+
+  .step { background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:20px; display:flex; flex-direction:column; gap:10px; position:relative;
+    transition:.2s; }
+  .step:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .step .num { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:.6px;
+    text-transform:uppercase; }
+  .step h3 { font-size:15px; font-weight:700; }
+  .step p { color:var(--muted); font-size:13px; line-height:1.55; flex:1; }
+  .step .badge { align-self:flex-start; padding:3px 9px; border-radius:999px;
+    font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
+  .badge.setup  { background:rgba(96,165,250,.1);  color:var(--blue); }
+  .badge.trace  { background:rgba(34,211,238,.1);  color:var(--accent-2); }
+  .badge.eval   { background:rgba(251,191,36,.1);  color:var(--yellow); }
+  .badge.optim  { background:rgba(124,92,255,.1);  color:var(--accent); }
+  .badge.compare{ background:rgba(52,211,153,.1);  color:var(--green); }
+  .badge.deploy { background:rgba(248,113,113,.1); color:var(--red); }
+
+  /* ── Concepts bar ── */
+  .concepts { max-width:900px; margin:0 auto 48px; padding:0 24px; }
+  .concepts h2 { font-size:13px; font-weight:600; text-transform:uppercase;
+    letter-spacing:1.2px; color:var(--muted); margin-bottom:16px; }
+  .concepts-grid { display:flex; flex-wrap:wrap; gap:10px; }
+  .concept { background:var(--panel-2); border:1px solid var(--line); border-radius:8px;
+    padding:10px 14px; display:flex; flex-direction:column; gap:3px; }
+  .concept .label { font-size:12px; font-weight:700; color:var(--text); }
+  .concept .desc  { font-size:11px; color:var(--muted); }
+
+  /* ── CTA ── */
+  .cta { text-align:center; padding:0 24px 72px; }
+  .cta p { color:var(--muted); margin-bottom:20px; font-size:14px; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:14px 32px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700;
+    cursor:pointer; text-decoration:none; letter-spacing:.2px;
+    box-shadow:0 4px 24px rgba(124,92,255,.3); transition:.2s; }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(124,92,255,.45); }
+
+  .divider { border:none; border-top:1px solid var(--line); max-width:900px;
+    margin:0 auto 48px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="logo">
+    <div class="dot"></div>
+    <span style="font-weight:800;font-size:18px;letter-spacing:-.3px;">PEMEX Knowledge Assistant</span>
+  </div>
+  <h1>MLflow GenAI Workshop</h1>
+  <p class="sub">Learn how to evaluate, trace, and systematically optimize a Databricks Knowledge Assistant using MLflow's GenAI evaluation suite.</p>
+  <span class="tag">Prompt Optimization Lab</span>
+</div>
+
+<div class="steps-section">
+  <h2>Lab Workflow</h2>
+  <div class="steps">
+
+    <div class="step">
+      <div class="num">Step 01</div>
+      <h3>Setup Data &amp; Knowledge Assistant</h3>
+      <p>Generate synthetic PEMEX procedure documents, upload to UC Volume, and spin up the Knowledge Assistant via the Databricks API.</p>
+      <span class="badge setup">Setup</span>
+    </div>
+
+    <div class="step">
+      <div class="num">Step 02</div>
+      <h3>Explore Auto-Generated Traces</h3>
+      <p>The KA instruments every request automatically. Learn to query traces with <code style="color:var(--accent-2)">mlflow.search_traces()</code>, drill into spans, and snapshot to Delta.</p>
+      <span class="badge trace">Tracing</span>
+    </div>
+
+    <div class="step">
+      <div class="num">Step 03</div>
+      <h3>Evaluate V1 (Baseline)</h3>
+      <p>Run <code style="color:var(--accent-2)">mlflow.genai.evaluate()</code> against 30 Q&amp;A pairs with four scorers — answer quality, safety, groundedness, and completeness.</p>
+      <span class="badge eval">Evaluation</span>
+    </div>
+
+    <div class="step">
+      <div class="num">Step 04</div>
+      <h3>Optimize with GEPA</h3>
+      <p>Use <code style="color:var(--accent-2)">mlflow.genai.optimize_prompts()</code> to automatically generate improved KA instructions. Registered in the MLflow Prompt Registry.</p>
+      <span class="badge optim">Optimization</span>
+    </div>
+
+    <div class="step">
+      <div class="num">Step 05</div>
+      <h3>Evaluate &amp; Compare</h3>
+      <p>Evaluate the optimized instructions against the same dataset. Side-by-side comparison of V1 vs optimized across all scorer dimensions.</p>
+      <span class="badge compare">Comparison</span>
+    </div>
+
+    <div class="step">
+      <div class="num">Step 06</div>
+      <h3>Apply &amp; Demo</h3>
+      <p>Push the optimized instructions to the live KA endpoint. Try the updated assistant below — compare responses before and after optimization.</p>
+      <span class="badge deploy">Deploy</span>
+    </div>
+
+  </div>
+</div>
+
+<hr class="divider" />
+
+<div class="concepts">
+  <h2>Key Concepts</h2>
+  <div class="concepts-grid">
+    <div class="concept">
+      <div class="label">Auto-Tracing</div>
+      <div class="desc">KA generates MLflow traces automatically — no instrumentation needed</div>
+    </div>
+    <div class="concept">
+      <div class="label">Prompt Registry</div>
+      <div class="desc">Version KA instructions with aliases (v1, optimized) in MLflow</div>
+    </div>
+    <div class="concept">
+      <div class="label">GEPA</div>
+      <div class="desc">Gradient-free prompt optimization using evaluation feedback</div>
+    </div>
+    <div class="concept">
+      <div class="label">Custom Scorers</div>
+      <div class="desc">answer_quality, Safety, Guidelines (groundedness &amp; completeness)</div>
+    </div>
+    <div class="concept">
+      <div class="label">Delta Snapshots</div>
+      <div class="desc">Trace data materialized to UC tables for SQL analytics</div>
+    </div>
+    <div class="concept">
+      <div class="label">Databricks Apps</div>
+      <div class="desc">One-click deploy — this UI is served from a DAB-managed app</div>
+    </div>
+  </div>
+</div>
+
+<div class="cta">
+  <p>The KA is live — try it out</p>
+  <a href="/chat" class="btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Open Demo Chat
+  </a>
+</div>
+
+</body>
+</html>"""
 
 
 _CHAT_UI_HTML = r"""<!DOCTYPE html>

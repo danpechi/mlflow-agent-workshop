@@ -41,8 +41,8 @@ def _default(env_var: str, fallback: str) -> str:
     return os.getenv(env_var, fallback)
 
 
-dbutils.widgets.text("catalog",          _default("WORKSHOP_CATALOG",        "pemex_lab"),                                          "1. UC Catalog")
-dbutils.widgets.text("schema",           _default("WORKSHOP_SCHEMA",         "default"),                                            "2. UC Schema")
+dbutils.widgets.text("catalog",          _default("WORKSHOP_CATALOG",        "users"),                                              "1. UC Catalog")
+dbutils.widgets.text("schema",           _default("WORKSHOP_SCHEMA",         _short_name),                                          "2. UC Schema")
 dbutils.widgets.text("volume",           _default("WORKSHOP_VOLUME",         f"{_short_name}_pemex_docs"),                          "3. UC Volume")
 dbutils.widgets.text("llm_endpoint",     _default("LLM_ENDPOINT_NAME",       "databricks-claude-sonnet-4-5"),                       "4. LLM serving endpoint")
 dbutils.widgets.text("ka_name",          _default("WORKSHOP_KA_NAME",        f"{_short_name}-pemex-ka"),                            "5. Knowledge Assistant name")

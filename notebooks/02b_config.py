@@ -57,11 +57,19 @@ print(f"MLflow experiment: {EXPERIMENT_PATH}")
 # COMMAND ----------
 
 # DBTITLE 1,Load data from volume
-with open(EVAL_DATASET_PATH) as f:
-    eval_qas = json.load(f)
+import os
 
-with open(SAMPLE_QA_PATH) as f:
-    sample_qas = json.load(f)
+def _load_json_or_table(json_path: str, table_fqn: str, label: str) -> list:
+    """Load from volume JSON file; fall back to UC table if file is missing."""
+    if os.path.exists(json_path):
+        with open(json_path) as f:
+            return json.load(f)
+    print(f"  WARN: {json_path} not found — loading {label} from UC table {table_fqn}")
+    rows = spark.table(table_fqn).toPandas().to_dict(orient="records")
+    return rows
+
+eval_qas   = _load_json_or_table(EVAL_DATASET_PATH, EVAL_TABLE_FQN,  "eval dataset")
+sample_qas = _load_json_or_table(SAMPLE_QA_PATH,    QA_TABLE_FQN,    "sample Q&A")
 
 print(f"Loaded {len(eval_qas)} evaluation Q&A pairs and {len(sample_qas)} sample Q&A pairs.")
 
