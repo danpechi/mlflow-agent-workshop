@@ -64,8 +64,9 @@ KA_PAYLOAD = {
     ),
     "knowledge_sources": [
         {
-            "type": "VOLUME",
-            "volume_path": DOCS_PATH,
+            "file_source": {
+                "path": DOCS_PATH,
+            }
         }
     ],
 }
