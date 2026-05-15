@@ -174,39 +174,34 @@ print(test_context[:300] + "...")
 # COMMAND ----------
 
 # DBTITLE 1,Define predict_fn builder
-from databricks_langchain import ChatDatabricks
+from mlflow.deployments import get_deploy_client
 
-model = ChatDatabricks(endpoint=LLM_ENDPOINT)
+_deploy_client = get_deploy_client("databricks")
 
 
-def make_predict_fn(instructions_alias: str):
+def make_predict_fn(instructions_alias: str = "v1"):
     """Create a predict_fn compatible with mlflow.genai.evaluate().
 
-    Loads the KA instructions from the Prompt Registry inside the traced call
-    so MLflow automatically links the instruction version to each trace.
+    Calls the live KA endpoint so evaluation reflects real-world behavior.
+    `instructions_alias` is kept for compatibility with GEPA optimization notebooks.
     """
     def predict_fn(*, question: str, **kwargs) -> str:
-        instructions = mlflow.genai.load_prompt(
-            f"prompts:/{INSTRUCTIONS_REGISTRY_NAME}@{instructions_alias}"
+        response = _deploy_client.predict(
+            endpoint=KA_ENDPOINT,
+            inputs={"input": [{"role": "user", "content": question}]},
         )
-        context = simple_retrieve(question)
-        system_content = (
-            f"{instructions.format()}\n\n"
-            "Use ONLY the following excerpts from PEMEX documentation to answer. "
-            "If the answer is not in the excerpts, say so.\n\n"
-            f"{context}"
-        )
-        response = model.invoke([
-            {"role": "system", "content": system_content},
-            {"role": "user",   "content": question},
-        ])
-        return response.content
+        # Extract text from Responses API output format
+        for item in response.get("output", []):
+            if item.get("type") == "message":
+                for c in item.get("content", []):
+                    if c.get("type") == "output_text":
+                        return c["text"]
+        return str(response)
 
     return predict_fn
 
 
-print(f"predict_fn builder ready — instructions registry: {INSTRUCTIONS_REGISTRY_NAME}")
-print(f"LLM endpoint: {LLM_ENDPOINT}")
+print(f"predict_fn builder ready — KA endpoint: {KA_ENDPOINT}")
 
 # COMMAND ----------
 
