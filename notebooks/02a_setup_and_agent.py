@@ -74,6 +74,17 @@ print(f"Creating Knowledge Assistant: {KA_NAME}")
 print(f"  Documents path: {DOCS_PATH}")
 print()
 
+def _extract_endpoint_name(resp: dict) -> str | None:
+    """Pull the serving endpoint name from a KA API response."""
+    # Try common field names the API might use
+    for field in ("endpoint_name", "serving_endpoint_name", "model_endpoint_name"):
+        val = resp.get(field)
+        if val:
+            return val
+    # Fall back to the sanitized display_name / name field
+    return resp.get("display_name") or resp.get("name")
+
+
 try:
     response = w.api_client.do(
         "POST",
@@ -81,8 +92,14 @@ try:
         body=KA_PAYLOAD,
     )
     KA_TILE_ID = response.get("id") or response.get("tile_id")
+    _actual_endpoint = _extract_endpoint_name(response)
+    if _actual_endpoint and _actual_endpoint != KA_ENDPOINT:
+        print(f"NOTE: API returned endpoint name '{_actual_endpoint}' (expected '{KA_ENDPOINT}').")
+        print(f"      Using '{_actual_endpoint}' for all subsequent cells.")
+        KA_ENDPOINT = _actual_endpoint
     print(f"KA created successfully!")
     print(f"  Tile ID       : {KA_TILE_ID}")
+    print(f"  Endpoint name : {KA_ENDPOINT}")
     print(f"  Status        : {response.get('status', response.get('endpoint_status', 'PROVISIONING'))}")
     print()
     print("The KA is now indexing documents. This may take a few minutes.")
@@ -90,13 +107,16 @@ except Exception as e:
     err = str(e)
     if "already exists" in err.lower() or "conflict" in err.lower():
         print(f"KA '{KA_NAME}' already exists — looking it up...")
-        # Find existing KA by name
         all_kas = w.api_client.do("GET", "/api/2.0/knowledge-assistants")
         kas = all_kas.get("knowledge_assistants", all_kas.get("items", []))
         match = next((k for k in kas if k.get("display_name") == KA_NAME or k.get("name") == KA_NAME), None)
         if match:
             KA_TILE_ID = match.get("id") or match.get("tile_id")
-            print(f"  Found existing KA. Tile ID: {KA_TILE_ID}")
+            _actual_endpoint = _extract_endpoint_name(match)
+            if _actual_endpoint and _actual_endpoint != KA_ENDPOINT:
+                print(f"NOTE: Actual endpoint name is '{_actual_endpoint}' (expected '{KA_ENDPOINT}').")
+                KA_ENDPOINT = _actual_endpoint
+            print(f"  Found existing KA. Tile ID: {KA_TILE_ID}, Endpoint: {KA_ENDPOINT}")
         else:
             raise RuntimeError(f"KA '{KA_NAME}' exists but could not be found in list. Check the Agents UI.")
     else:
