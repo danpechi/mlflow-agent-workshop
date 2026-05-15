@@ -122,7 +122,7 @@ print(f"  path  : {DOCS_PATH}")
 # COMMAND ----------
 
 # DBTITLE 1,Poll until ACTIVE
-MAX_WAIT_SECONDS = 1200  # 20 min
+MAX_WAIT_SECONDS = 1800  # 30 min
 POLL_INTERVAL = 30
 
 print(f"Polling KA state (id={KA_ID})...")
