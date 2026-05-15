@@ -56,7 +56,7 @@ print(f"MLflow experiment: {EXPERIMENT_PATH}")
 w = WorkspaceClient()
 
 KA_PAYLOAD = {
-    "display_name": KA_NAME,
+    "name": KA_NAME,
     "description": "PEMEX operational Q&A assistant for safety, environmental, and operational procedures",
     "instructions": (
         "You are a helpful assistant for PEMEX employees. "
@@ -82,7 +82,7 @@ def _extract_endpoint_name(resp: dict) -> str | None:
         if val:
             return val
     # Fall back to the sanitized display_name / name field
-    return resp.get("display_name") or resp.get("name")
+    return resp.get("name")
 
 
 try:
@@ -109,7 +109,7 @@ except Exception as e:
         print(f"KA '{KA_NAME}' already exists — looking it up...")
         all_kas = w.api_client.do("GET", "/api/2.0/knowledge-assistants")
         kas = all_kas.get("knowledge_assistants", all_kas.get("items", []))
-        match = next((k for k in kas if k.get("display_name") == KA_NAME or k.get("name") == KA_NAME), None)
+        match = next((k for k in kas if k.get("name") == KA_NAME), None)
         if match:
             KA_TILE_ID = match.get("id") or match.get("tile_id")
             _actual_endpoint = _extract_endpoint_name(match)
