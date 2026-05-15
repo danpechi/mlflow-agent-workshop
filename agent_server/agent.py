@@ -5,8 +5,6 @@ import os
 from typing import Any, AsyncGenerator
 
 import mlflow
-from databricks_langchain import ChatDatabricks
-from langchain_core.messages import HumanMessage, SystemMessage
 from mlflow.genai.agent_server import invoke, stream
 from mlflow.types.responses import (
     ResponsesAgentRequest,
@@ -14,7 +12,6 @@ from mlflow.types.responses import (
     ResponsesAgentStreamEvent,
 )
 
-from agent_server.prompts import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 mlflow.langchain.autolog()
@@ -81,16 +78,25 @@ def _extract_question(request: ResponsesAgentRequest) -> str:
 
 
 async def _call_ka(question: str) -> str:
-    """Call the KA serving endpoint and return the answer text."""
+    """Call the KA serving endpoint using the Responses API input format."""
     if not KA_ENDPOINT_NAME:
         return "KA_ENDPOINT_NAME is not configured. Please set it in app.yaml."
-    model = ChatDatabricks(endpoint=KA_ENDPOINT_NAME)
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=question),
-    ]
-    response = await model.ainvoke(messages)
-    return response.content
+    import asyncio
+    from mlflow.deployments import get_deploy_client
+    client = get_deploy_client("databricks")
+    # KA endpoints use {"input": [...]} not {"messages": [...]}
+    response = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: client.predict(
+            endpoint=KA_ENDPOINT_NAME,
+            inputs={"input": [{"role": "user", "content": question}]},
+        ),
+    )
+    for item in response.get("output", []):
+        for part in item.get("content", []):
+            if part.get("type") == "output_text":
+                return part["text"]
+    return str(response)
 
 
 @invoke()

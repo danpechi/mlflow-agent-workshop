@@ -202,10 +202,13 @@ def test_ka_endpoint(endpoint_name: str, question: str) -> str:
     client = get_deploy_client("databricks")
     response = client.predict(
         endpoint=endpoint_name,
-        inputs={"messages": [{"role": "user", "content": question}]},
+        inputs={"input": [{"role": "user", "content": question}]},
     )
-    if "choices" in response:
-        return response["choices"][0]["message"]["content"]
+    # KA returns Responses API format: output[].content[].text
+    for item in response.get("output", []):
+        for part in item.get("content", []):
+            if part.get("type") == "output_text":
+                return part["text"]
     return str(response)
 
 
